@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Basic JavaScript Test</title>
+</head>
+<body style="background: black; color: white; padding: 20px; font-family: Arial;">
+    <h1>Basic JavaScript Test</h1>
+    
+    <button 
+        onclick="document.getElementById('result').innerHTML = 'Button clicked at ' + new Date().toLocaleTimeString(); document.getElementById('result').style.color = 'green';"
+        style="background: red; color: white; padding: 20px 40px; font-size: 20px; border: none; border-radius: 8px; cursor: pointer; margin: 10px;">
+        CLICK ME - INLINE JS
+    </button>
+    
+    <br><br>
+    
+    <button id="testBtn" style="background: blue; color: white; padding: 20px 40px; font-size: 20px; border: none; border-radius: 8px; cursor: pointer; margin: 10px;">
+        CLICK ME - SCRIPT JS
+    </button>
+    
+    <br><br>
+    
+    <div id="result" style="font-size: 18px; margin-top: 20px; color: yellow;">
+        Click either button to test JavaScript execution
+    </div>
+    
+    <script>
+        document.getElementById('testBtn').onclick = function() {
+            document.getElementById('result').innerHTML = 'Script button clicked at ' + new Date().toLocaleTimeString();
+            document.getElementById('result').style.color = 'lime';
+            console.log('Script button was clicked');
+        };
+        
+        // Test if script runs on load
+        document.getElementById('result').innerHTML += '<br>JavaScript loaded successfully at ' + new Date().toLocaleTimeString();
+    </script>
+</body>
+</html>
