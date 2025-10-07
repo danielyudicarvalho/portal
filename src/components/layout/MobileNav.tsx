@@ -9,7 +9,8 @@ import {
   PlayIcon,
   GiftIcon,
   UserCircleIcon,
-  WifiIcon
+  WifiIcon,
+  UsersIcon
 } from '@heroicons/react/24/outline';
 import { InstallPrompt } from '@/components/features/InstallPrompt';
 
@@ -107,6 +108,20 @@ const MobileNav: React.FC<MobileNavProps> = ({
       emoji: '🔢',
       description: 'Number sequence game',
       current: pathname === '/games/123'
+    },
+    {
+      name: 'Perfect Square',
+      href: '/games/perfect-square',
+      emoji: '🟦',
+      description: 'Time-based puzzle game',
+      current: pathname === '/games/perfect-square'
+    },
+    {
+      name: 'The Battle',
+      href: '/games/the-battle',
+      emoji: '⚔️',
+      description: 'Multiplayer tank battle',
+      current: pathname === '/games/the-battle'
     }
   ];
 
@@ -116,41 +131,20 @@ const MobileNav: React.FC<MobileNavProps> = ({
 
   return (
     <>
-      {/* Always render a debug indicator */}
-      <div 
-        className="fixed top-20 right-4 z-[100] bg-red-500 text-white p-2 text-xs rounded"
-        style={{ zIndex: 9999 }}
-      >
-        Menu State: {isOpen ? 'OPEN' : 'CLOSED'}
-      </div>
-
       {/* Only render menu when open */}
       {isOpen && (
         <>
           {/* Overlay */}
           <div 
-            className="fixed inset-0 z-40 bg-black/50"
+            className="fixed inset-0 z-40 bg-black/60"
             onClick={onClose}
-            style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
           />
 
           {/* Mobile Navigation Panel */}
           <div 
-            className="fixed top-16 left-0 z-50 w-80 h-screen bg-white shadow-lg"
-            style={{ 
-              backgroundColor: '#1f2937',
-              border: '5px solid lime',
-              width: '320px',
-              height: 'calc(100vh - 64px)'
-            }}
+            className="fixed top-16 left-0 z-50 h-[calc(100vh-64px)] w-80 max-w-full bg-gaming-dark border-r border-gaming-accent/20 shadow-2xl"
           >
         <div className="flex flex-col h-full">
-          {/* Debug Status */}
-          <div className="px-4 py-3 border-b border-gaming-accent/20 bg-red-500">
-            <div className="text-white text-sm">
-              DEBUG: Menu is {isOpen ? 'OPEN' : 'CLOSED'}
-            </div>
-          </div>
 
           {/* Connection Status */}
           <div className="px-4 py-3 border-b border-gaming-accent/20">
@@ -238,6 +232,33 @@ const MobileNav: React.FC<MobileNavProps> = ({
               ))}
             </div>
 
+            {/* Multiplayer Games */}
+            <div className="space-y-2">
+              <h3 className="px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                Multiplayer Games
+              </h3>
+              
+              <Link
+                href="/games/the-battle"
+                onClick={handleLinkClick}
+                className={clsx(
+                  'flex items-center px-4 py-3 text-sm rounded-lg transition-colors tap-target touch-manipulation',
+                  pathname === '/games/the-battle'
+                    ? 'bg-gaming-accent text-white'
+                    : 'text-gray-300 hover:text-white hover:bg-gaming-accent/20 active:bg-gaming-accent/30'
+                )}
+              >
+                <span className="text-lg mr-3 flex-shrink-0">⚔️</span>
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium truncate">The Battle</div>
+                  <div className="text-xs opacity-75 truncate">Real-time tank combat</div>
+                </div>
+                <span className="ml-2 text-xs bg-gaming-accent/20 text-gaming-accent px-2 py-1 rounded-full">
+                  Multiplayer
+                </span>
+              </Link>
+            </div>
+
             {/* Quick Actions */}
             <div className="space-y-2 mt-6">
               <h3 className="px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
@@ -251,6 +272,15 @@ const MobileNav: React.FC<MobileNavProps> = ({
               >
                 <PlayIcon className="h-4 w-4 mr-3" />
                 Browse All Games
+              </Link>
+              
+              <Link
+                href="/games/multiplayer"
+                onClick={handleLinkClick}
+                className="flex items-center px-4 py-3 text-sm text-gray-300 hover:text-white hover:bg-gaming-accent/20 active:bg-gaming-accent/30 rounded-lg transition-colors tap-target touch-manipulation"
+              >
+                <UsersIcon className="h-4 w-4 mr-3" />
+                Multiplayer Games
               </Link>
               
               <Link

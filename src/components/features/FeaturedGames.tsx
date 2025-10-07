@@ -47,6 +47,17 @@ const FeaturedGames: React.FC<FeaturedGamesProps> = ({
       description: 'Test your memory! Remember the colored circles and click on them when they turn white.'
     },
     {
+      id: 'perfect-square',
+      title: 'Perfect Square',
+      provider: 'In-House',
+      thumbnail: '/images/game-placeholder.svg',
+      category: 'Puzzle',
+      rating: 4.7,
+      isNew: true,
+      isFavorite: false,
+      description: 'Grow your square to the perfect size and land it in the target area. Test your timing and precision!'
+    },
+    {
       id: '1',
       title: 'Mega Fortune Slots',
       provider: 'NetEnt',

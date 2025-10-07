@@ -41,14 +41,7 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle, isMobileMenuOpen })
           {/* Logo and Mobile Menu Button */}
           <div className="flex items-center">
             <button
-              onClick={(e) => {
-                console.log('🍔 Hamburger menu clicked!', {
-                  event: e,
-                  onMobileMenuToggle: !!onMobileMenuToggle,
-                  mobileMenu: !!mobileMenu
-                });
-                alert('Hamburger menu clicked!');
-
+              onClick={() => {
                 if (onMobileMenuToggle) {
                   onMobileMenuToggle();
                   return;
@@ -119,28 +112,6 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle, isMobileMenuOpen })
 
             {/* User Menu - Replace with actual auth logic */}
             <div className="flex items-center space-x-1 sm:space-x-2">
-              {/* Test button */}
-              <div 
-                onClick={() => {
-                  console.log('DIV CLICKED!');
-                  alert('DIV Test button works!');
-                }}
-                onMouseDown={() => console.log('MOUSE DOWN!')}
-                onMouseUp={() => console.log('MOUSE UP!')}
-                className="bg-red-500 text-white px-2 py-1 rounded text-xs cursor-pointer select-none"
-              >
-                TEST DIV
-              </div>
-              <button 
-                onClick={() => {
-                  console.log('BUTTON CLICKED!');
-                  alert('BUTTON Test works!');
-                }}
-                onMouseDown={() => console.log('BUTTON MOUSE DOWN!')}
-                className="bg-blue-500 text-white px-2 py-1 rounded text-xs"
-              >
-                TEST BTN
-              </button>
               <Button
                 variant="outline"
                 size="sm"
@@ -148,8 +119,7 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle, isMobileMenuOpen })
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  console.log('🔐 Login button clicked!', e);
-                  alert('Login clicked!');
+                  // TODO: Integrate login flow
                 }}
               >
                 Login
@@ -161,8 +131,7 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle, isMobileMenuOpen })
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  console.log('📝 Sign Up button clicked!', e);
-                  alert('Sign Up clicked!');
+                  // TODO: Integrate sign-up flow
                 }}
               >
                 <span className="hidden xs:inline">Sign Up</span>

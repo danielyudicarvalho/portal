@@ -5,16 +5,16 @@ var levelHeight = 8;
 var level = 0;
 var ballSpeed = 600;
 
-window.onload = function() {
+window.onload = function () {
   console.log('Clocks Game: window.onload triggered');
   try {
     console.log('Clocks Game: Creating Phaser game...');
     game = new Phaser.Game(640, 960, Phaser.AUTO, "");
     console.log('Clocks Game: Phaser game created successfully');
-    
+
     console.log('Clocks Game: Adding PlayGame state...');
     game.state.add("PlayGame", playGame);
-    
+
     console.log('Clocks Game: Starting PlayGame state...');
     game.state.start("PlayGame");
     console.log('Clocks Game: Game initialization complete');
@@ -23,13 +23,13 @@ window.onload = function() {
   }
 }
 
-var playGame = function(game) {};
+var playGame = function (game) { };
 
 playGame.prototype = {
-  preload: function() {
+  preload: function () {
     console.log('Clocks Game: preload() started');
     console.log('Clocks Game: Loading assets...');
-    
+
     game.load.spritesheet("smallclock", "assets/sprites/smallclock.png", 70, 70);
     game.load.spritesheet("smallhand", "assets/sprites/smallhand.png", 70, 70);
     game.load.spritesheet("bigclock", "assets/sprites/bigclock.png", 140, 140);
@@ -37,27 +37,27 @@ playGame.prototype = {
     game.load.image("smallclockface", "assets/sprites/smallclockface.png");
     game.load.image("bigclockface", "assets/sprites/bigclockface.png");
     game.load.image("ball", "assets/sprites/ball.png");
-    
+
     console.log('Clocks Game: Setting up scaling...');
     game.scale.pageAlignHorizontally = true;
     game.scale.pageAlignVertically = true;
     game.scale.scaleMode = Phaser.ScaleManager.SHOW_ALL;
-    
+
     console.log('Clocks Game: preload() completed');
-    
+
     // Add error handling for asset loading
-    game.load.onFileError.add(function(key, file) {
+    game.load.onFileError.add(function (key, file) {
       console.error('Clocks Game: Failed to load asset:', key, file);
     });
-    
-    game.load.onLoadComplete.add(function() {
+
+    game.load.onLoadComplete.add(function () {
       console.log('Clocks Game: All assets loaded successfully');
     });
   },
-  create: function() {
+  create: function () {
     console.log('Clocks Game: create() started');
     console.log('Clocks Game: Initializing game variables...');
-    
+
     this.canFire = true;
     this.reached = 1;
     this.totalClocks = 0;
@@ -67,7 +67,7 @@ playGame.prototype = {
     this.ballGroup.y = (game.height - gridSize * 16) / 2;
     this.clocksArray = [];
     game.stage.backgroundColor = 0x2babca;
-    
+
     console.log('Clocks Game: Creating level layout...');
     for (var i = 0; i < levels[level].tiledOutput.length; i++) {
       switch (levels[level].tiledOutput[i]) {
@@ -90,13 +90,13 @@ playGame.prototype = {
     this.clocksArray[startClock].children[1].tint = 0xffffff;
     this.activeClock = this.clocksArray[startClock];
     game.input.onDown.add(this.fireBall, this);
-    
+
     console.log('Clocks Game: create() completed successfully');
     console.log('Clocks Game: Total clocks created:', this.totalClocks);
   },
-  update: function() {
+  update: function () {
     var clockHit = false;
-    game.physics.arcade.overlap(this.ball, this.clockGroup, function(ball, clock) {
+    game.physics.arcade.overlap(this.ball, this.clockGroup, function (ball, clock) {
       if (!clockHit) {
         clock.frame = 1;
         clock.tint = 0x2babca;
@@ -113,14 +113,14 @@ playGame.prototype = {
       if (this.reached < this.totalClocks) {
         this.canFire = true;
       } else {
-        game.time.events.add(Phaser.Timer.SECOND * 1, function() {
+        game.time.events.add(Phaser.Timer.SECOND * 1, function () {
           level = (level + 1) % 10;
           game.state.start("PlayGame");
         });
       }
     }
   },
-  placeClock: function(clockObj, prefix) {
+  placeClock: function (clockObj, prefix) {
     var clockSprite = game.add.sprite(clockObj.x * gridSize, clockObj.y * gridSize, prefix + "clock");
     clockSprite.anchor.set(0.5);
     game.physics.enable(clockSprite, Phaser.Physics.ARCADE);
@@ -139,7 +139,7 @@ playGame.prototype = {
     this.totalClocks++;
     return clockSprite;
   },
-  fireBall: function() {
+  fireBall: function () {
     if (this.canFire) {
       this.canFire = false;
       var handAngle = this.activeClock.children[1].angle;
@@ -147,7 +147,7 @@ playGame.prototype = {
       this.ball.anchor.set(0.5);
       game.physics.enable(this.ball, Phaser.Physics.ARCADE);
       this.ball.checkWorldBounds = true;
-      this.ball.events.onOutOfBounds.add(function() {
+      this.ball.events.onOutOfBounds.add(function () {
         game.state.start("PlayGame");
       });
       this.ballGroup.add(this.ball);

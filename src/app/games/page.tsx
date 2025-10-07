@@ -30,6 +30,29 @@ const mockGames: Game[] = [
     tags: ['memory', 'puzzle', 'brain-training']
   },
   {
+    id: 'perfect-square',
+    title: 'Perfect Square',
+    slug: 'perfect-square',
+    description: 'Grow your square to the perfect size and land it in the target area. Test your timing and precision!',
+    thumbnail: '/images/game-placeholder.svg',
+    category: {
+      id: '5',
+      name: 'Puzzle Games',
+      slug: 'puzzle',
+      description: 'Mind-bending puzzle and logic games',
+      icon: '🧩',
+      order: 5,
+      isActive: true
+    },
+    provider: 'In-House',
+    isActive: true,
+    isFeatured: true,
+    popularity: 87,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    tags: ['puzzle', 'timing', 'precision']
+  },
+  {
     id: 'fill-the-holes',
     title: 'Fill the Holes',
     slug: 'fill-the-holes',
@@ -189,6 +212,29 @@ const mockGames: Game[] = [
     createdAt: new Date(),
     updatedAt: new Date(),
     tags: ['arcade', 'jumping', 'endless']
+  },
+  {
+    id: 'the-battle',
+    title: 'The Battle',
+    slug: 'the-battle',
+    description: 'Real-time multiplayer tank battle with rock-paper-scissors mechanics! Each tank type has unique strengths and weaknesses.',
+    thumbnail: '/images/game-placeholder.svg',
+    category: {
+      id: '7',
+      name: 'Multiplayer Games',
+      slug: 'multiplayer',
+      description: 'Real-time multiplayer games for competitive fun',
+      icon: '👥',
+      order: 7,
+      isActive: true
+    },
+    provider: 'In-House',
+    isActive: true,
+    isFeatured: true,
+    popularity: 96,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    tags: ['multiplayer', 'tanks', 'strategy', 'real-time']
   },
   {
     id: '1',
@@ -385,13 +431,24 @@ const arcadeGamesCategory: GameCategoryType = {
   games: mockGames.filter(game => game.category.slug === 'arcade')
 };
 
+const multiplayerGamesCategory: GameCategoryType = {
+  id: '7',
+  name: 'Multiplayer Games',
+  slug: 'multiplayer',
+  description: 'Real-time multiplayer games for competitive fun',
+  icon: '👥',
+  order: 7,
+  isActive: true,
+  games: mockGames.filter(game => game.category.slug === 'multiplayer')
+};
+
 export default function GamesPage() {
   const [favoriteGameIds, setFavoriteGameIds] = useState<string[]>(['1', '3']);
 
   const handleGameClick = (game: Game) => {
     console.log('Game clicked:', game.title);
     // Navigate to the game page
-    if (game.slug === 'memdot' || game.slug === 'fill-the-holes' || game.slug === 'clocks' || game.slug === 'circle-path' || game.slug === 'box-jump' || game.slug === 'boom-dots' || game.slug === '123' || game.slug === 'doodle-jump') {
+    if (game.slug === 'memdot' || game.slug === 'fill-the-holes' || game.slug === 'clocks' || game.slug === 'circle-path' || game.slug === 'box-jump' || game.slug === 'boom-dots' || game.slug === '123' || game.slug === 'doodle-jump' || game.slug === 'perfect-square' || game.slug === 'the-battle') {
       window.location.href = `/games/${game.slug}`;
     } else {
       // For other games, show placeholder message
@@ -425,6 +482,36 @@ export default function GamesPage() {
             Discover amazing games across different categories. Play your favorites and explore new adventures.
           </p>
         </div>
+
+        {/* Multiplayer Games Highlight */}
+        <section className="mb-16">
+          <div className="bg-gradient-to-r from-gaming-accent/20 to-gaming-secondary/20 rounded-lg p-8 text-center">
+            <div className="flex items-center justify-center mb-4">
+              <span className="text-4xl mr-3">👥</span>
+              <h2 className="text-3xl font-gaming font-bold text-white">
+                Multiplayer Games
+              </h2>
+            </div>
+            <p className="text-gray-300 mb-6 max-w-2xl mx-auto">
+              Battle other players in real-time! Experience competitive gaming with friends and players from around the world.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <a
+                href="/games/multiplayer"
+                className="inline-flex items-center px-6 py-3 bg-gaming-accent hover:bg-gaming-accent/80 text-white font-semibold rounded-lg transition-colors"
+              >
+                <span className="mr-2">⚔️</span>
+                Browse Multiplayer Games
+              </a>
+              <a
+                href="/games/the-battle"
+                className="inline-flex items-center px-6 py-3 border border-gaming-accent text-gaming-accent hover:bg-gaming-accent hover:text-white font-semibold rounded-lg transition-colors"
+              >
+                Play The Battle Now
+              </a>
+            </div>
+          </div>
+        </section>
 
         {/* All Games Grid */}
         <section className="mb-16">
@@ -484,6 +571,15 @@ export default function GamesPage() {
 
         <GameCategory
           category={arcadeGamesCategory}
+          onGameClick={handleGameClick}
+          onToggleFavorite={handleToggleFavorite}
+          onViewAllClick={handleViewAllClick}
+          favoriteGameIds={favoriteGameIds}
+          maxGamesShown={4}
+        />
+
+        <GameCategory
+          category={multiplayerGamesCategory}
           onGameClick={handleGameClick}
           onToggleFavorite={handleToggleFavorite}
           onViewAllClick={handleViewAllClick}

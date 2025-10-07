@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multiplayer Box Jump</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #2c3e50;
+            font-family: Arial, sans-serif;
+            color: white;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .lobby {
+            text-align: center;
+            padding: 50px 20px;
+        }
+
+        .lobby h1 {
+            font-size: 3em;
+            margin-bottom: 30px;
+            color: #9b59b6;
+        }
+
+        .join-form {
+            margin-bottom: 30px;
+        }
+
+        .join-form input {
+            padding: 15px;
+            font-size: 18px;
+            border: none;
+            border-radius: 5px;
+            margin-right: 10px;
+            min-width: 200px;
+        }
+
+        .btn {
+            padding: 15px 30px;
+            font-size: 18px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            background: #9b59b6;
+            color: white;
+            transition: background 0.3s;
+        }
+
+        .btn:hover {
+            background: #8e44ad;
+        }
+
+        .btn:disabled {
+            background: #7f8c8d;
+            cursor: not-allowed;
+        }
+
+        .players-list {
+            background: #34495e;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .player-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            margin: 5px 0;
+            background: #2c3e50;
+            border-radius: 5px;
+        }
+
+        .game-area {
+            display: none;
+        }
+
+        .game-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #34495e;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .current-turn {
+            background: #e74c3c;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 1.2em;
+        }
+
+        .game-canvas-container {
+            text-align: center;
+            background: #2c3e50;
+            border-radius: 10px;
+            padding: 20px;
+        }
+
+        .spectator-mode {
+            background: #f39c12;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .results {
+            background: #27ae60;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+
+        .error {
+            background: #e74c3c;
+            color: white;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Lobby Screen -->
+        <div id="lobby" class="lobby">
+            <h1>Multiplayer Box Jump</h1>
+            <p>At least 5 players needed to start the game</p>
+            
+            <div class="join-form">
+                <input type="text" id="playerName" placeholder="Enter your name" maxlength="20">
+                <button id="joinBtn" class="btn">Join Game</button>
+            </div>
+
+            <div id="playersSection" class="hidden">
+                <div class="players-list">
+                    <h3>Players (<span id="playerCount">0</span>/5+ needed)</h3>
+                    <div id="playersList"></div>
+                </div>
+                
+                <button id="startGameBtn" class="btn" disabled>Start Game</button>
+            </div>
+        </div>
+
+        <!-- Game Screen -->
+        <div id="gameArea" class="game-area">
+            <div class="game-info">
+                <div>
+                    <strong>Level: <span id="currentLevel">1</span>/<span id="totalLevels">20</span></strong>
+                </div>
+                <div>
+                    <strong>Players: <span id="gamePlayerCount">0</span></strong>
+                </div>
+            </div>
+
+            <div id="currentTurn" class="current-turn hidden">
+                <strong id="turnPlayerName"></strong>'s turn to play Level <span id="turnLevel">1</span>
+            </div>
+
+            <div id="spectatorMode" class="spectator-mode hidden">
+                You are spectating. Wait for your turn!
+            </div>
+
+            <div class="game-canvas-container">
+                <div id="gameCanvas"></div>
+            </div>
+
+            <div id="gameResults" class="results hidden">
+                <h3>Level Results</h3>
+                <div id="resultsContent"></div>
+            </div>
+        </div>
+
+        <!-- Final Results -->
+        <div id="finalResults" class="results hidden">
+            <h2>Game Completed!</h2>
+            <div id="finalResultsContent"></div>
+        </div>
+
+        <!-- Error Messages -->
+        <div id="errorMessage" class="error hidden"></div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/phaser/2.4.4/phaser.min.js"></script>
+    <script src="js/multiplayer-game.js"></script>
+</body>
+</html>

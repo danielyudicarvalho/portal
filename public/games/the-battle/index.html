@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Battle - Multiplayer Tank Game</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #2c3e50;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+        }
+        
+        canvas {
+            outline: none;
+            border: none;
+        }
+        
+        #game-container {
+            border: 3px solid #34495e;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            position: relative;
+        }
+        
+        #ui {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            font-size: 16px;
+            z-index: 100;
+        }
+        
+        #health-bar {
+            width: 200px;
+            height: 20px;
+            background: #e74c3c;
+            border: 2px solid #fff;
+            margin-top: 5px;
+        }
+        
+        #health-fill {
+            height: 100%;
+            background: #27ae60;
+            transition: width 0.3s;
+        }
+        
+        #game-over {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            display: none;
+            z-index: 200;
+        }
+        
+        #restart-btn {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        
+        #restart-btn:hover {
+            background: #2980b9;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <div id="ui">
+            <div>Health: <span id="health-text">100</span></div>
+            <div id="health-bar">
+                <div id="health-fill" style="width: 100%"></div>
+            </div>
+            <div>Alive Players: <span id="player-count">1</span></div>
+            <div id="status-text" style="margin-top: 10px; font-weight: bold; font-size: 14px;"></div>
+        </div>
+        
+        <div id="game-over">
+            <h2 id="game-over-text">Game Over</h2>
+            <button id="restart-btn" onclick="location.reload()">Play Again</button>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.70.0/dist/phaser.min.js"></script>
+    <script src="js/game.js"></script>
+    <script>
+        let gameInstance = null;
+        
+        // Ensure the game canvas gets focus and handle keyboard events
+        window.addEventListener('load', function() {
+            // Focus management
+            function focusGame() {
+                const canvas = document.querySelector('canvas');
+                if (canvas) {
+                    canvas.focus();
+                    canvas.setAttribute('tabindex', '0');
+                    console.log('Canvas focused');
+                }
+            }
+            
+            // Try to focus multiple times
+            setTimeout(focusGame, 500);
+            setTimeout(focusGame, 1000);
+            setTimeout(focusGame, 2000);
+            
+            // Add multiple event listeners for focus
+            document.addEventListener('click', focusGame);
+            document.addEventListener('mousedown', focusGame);
+            
+            // Add canvas event listeners when it's created
+            const observer = new MutationObserver(function(mutations) {
+                mutations.forEach(function(mutation) {
+                    if (mutation.addedNodes) {
+                        mutation.addedNodes.forEach(function(node) {
+                            if (node.tagName === 'CANVAS') {
+                                console.log('Canvas detected, setting up events');
+                                node.setAttribute('tabindex', '0');
+                                node.focus();
+                                
+                                // Add event listeners
+                                node.addEventListener('click', () => {
+                                    node.focus();
+                                    console.log('Canvas clicked and focused');
+                                });
+                                
+                                node.addEventListener('mouseenter', () => {
+                                    node.focus();
+                                });
+                            }
+                        });
+                    }
+                });
+            });
+            
+            observer.observe(document.body, {
+                childList: true,
+                subtree: true
+            });
+        });
+        
+        // Let Phaser handle key events; do not stop propagation here.
+    </script>
+</body>
+</html>

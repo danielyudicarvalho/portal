@@ -36,6 +36,8 @@ export default function Home() {
     // Navigate to the game page
     if (game.id === 'memdot') {
       window.location.href = '/games/memdot';
+    } else if (game.id === 'perfect-square') {
+      window.location.href = '/games/perfect-square';
     } else {
       // For other games, show placeholder message
       alert(`Starting ${game.title}...`);
