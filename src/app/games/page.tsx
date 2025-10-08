@@ -237,6 +237,52 @@ const mockGames: Game[] = [
     tags: ['multiplayer', 'tanks', 'strategy', 'real-time']
   },
   {
+    id: 'snake-multiplayer',
+    title: 'Multiplayer Snake Battle',
+    slug: 'snake-multiplayer',
+    description: 'Real-time multiplayer snake game inspired by Slither.io! Battle up to 8 players with special abilities, shooting, armor, and dangerous poison food.',
+    thumbnail: '/images/game-placeholder.svg',
+    category: {
+      id: '7',
+      name: 'Multiplayer Games',
+      slug: 'multiplayer',
+      description: 'Real-time multiplayer games for competitive fun',
+      icon: '👥',
+      order: 7,
+      isActive: true
+    },
+    provider: 'In-House',
+    isActive: true,
+    isFeatured: true,
+    popularity: 98,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    tags: ['multiplayer', 'snake', 'battle', 'real-time', 'shooting']
+  },
+  {
+    id: 'box-jump-multiplayer',
+    title: 'Multiplayer Box Jump',
+    slug: 'box-jump-multiplayer',
+    description: 'Turn-based multiplayer platformer! At least 5 players take turns attempting each level. Only those who complete a level can advance to the next one.',
+    thumbnail: '/images/game-placeholder.svg',
+    category: {
+      id: '7',
+      name: 'Multiplayer Games',
+      slug: 'multiplayer',
+      description: 'Real-time multiplayer games for competitive fun',
+      icon: '👥',
+      order: 7,
+      isActive: true
+    },
+    provider: 'In-House',
+    isActive: true,
+    isFeatured: true,
+    popularity: 94,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    tags: ['multiplayer', 'platformer', 'turn-based', 'competitive']
+  },
+  {
     id: '1',
     title: 'Mega Fortune Slots',
     slug: 'mega-fortune-slots',
@@ -448,7 +494,7 @@ export default function GamesPage() {
   const handleGameClick = (game: Game) => {
     console.log('Game clicked:', game.title);
     // Navigate to the game page
-    if (game.slug === 'memdot' || game.slug === 'fill-the-holes' || game.slug === 'clocks' || game.slug === 'circle-path' || game.slug === 'box-jump' || game.slug === 'boom-dots' || game.slug === '123' || game.slug === 'doodle-jump' || game.slug === 'perfect-square' || game.slug === 'the-battle') {
+    if (game.slug === 'memdot' || game.slug === 'fill-the-holes' || game.slug === 'clocks' || game.slug === 'circle-path' || game.slug === 'box-jump' || game.slug === 'boom-dots' || game.slug === '123' || game.slug === 'doodle-jump' || game.slug === 'perfect-square' || game.slug === 'the-battle' || game.slug === 'snake-multiplayer' || game.slug === 'box-jump-multiplayer') {
       window.location.href = `/games/${game.slug}`;
     } else {
       // For other games, show placeholder message
