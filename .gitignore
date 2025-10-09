@@ -6,7 +6,7 @@
 .pnp.js
 .yarn/install-state.gz
 
-.kiro
+.kiro/
 
 # testing
 /coverage
