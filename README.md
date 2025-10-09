@@ -1,6 +1,7 @@
-# Game Portal
+# The Portal
 
 A modern gaming portal built with Next.js 14, TypeScript, and Tailwind CSS.
+It’s a social platform for hyper-casual multiplayer games, where players can create or join rooms, challenge friends, and even bet real money on their own skills to compete for rewards.
 
 ## Features
 
