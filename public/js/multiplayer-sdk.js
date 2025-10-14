@@ -8,6 +8,7 @@ class MultiplayerSDK {
     this.serverUrl = options.serverUrl || 'ws://localhost:3002';
     this.client = null;
     this.room = null;
+    this.lobby = null;
     this.playerId = null;
     this.isHost = false;
     this.gameState = null;
@@ -26,7 +27,10 @@ class MultiplayerSDK {
       'game_update': [],
       'countdown_started': [],
       'countdown_tick': [],
-      'error': []
+      'error': [],
+      'rooms_updated': [],
+      'room_created': [],
+      'room_state_changed': []
     };
     
     this.initializeColyseus();
@@ -84,6 +88,165 @@ class MultiplayerSDK {
         }
       });
     }
+  }
+
+  // Room discovery and management
+  async connectToLobby() {
+    if (!this.client) {
+      throw new Error('Client not initialized');
+    }
+
+    try {
+      this.lobby = await this.client.joinOrCreate('lobby');
+      this.setupLobbyHandlers();
+      console.log('🏠 Connected to lobby');
+      return this.lobby;
+    } catch (error) {
+      console.error('Failed to connect to lobby:', error);
+      this.emit('error', { message: 'Failed to connect to lobby' });
+      throw error;
+    }
+  }
+
+  async disconnectFromLobby() {
+    if (this.lobby) {
+      this.lobby.leave();
+      this.lobby = null;
+      console.log('👋 Disconnected from lobby');
+    }
+  }
+
+  async getActiveRooms(gameId) {
+    if (!this.lobby) {
+      await this.connectToLobby();
+    }
+
+    return new Promise((resolve, reject) => {
+      this.lobby.send('get_active_rooms', { gameId });
+      
+      const timeout = setTimeout(() => {
+        reject(new Error('Timeout getting active rooms'));
+      }, 5000);
+
+      const handleRoomsResponse = (data) => {
+        clearTimeout(timeout);
+        this.lobby.off('active_rooms', handleRoomsResponse);
+        resolve(data.rooms || []);
+      };
+
+      this.lobby.onMessage('active_rooms', handleRoomsResponse);
+    });
+  }
+
+  async createRoomWithOptions(gameId, options = {}) {
+    if (!this.lobby) {
+      await this.connectToLobby();
+    }
+
+    return new Promise((resolve, reject) => {
+      const roomOptions = {
+        gameId,
+        isPrivate: options.isPrivate || false,
+        maxPlayers: options.maxPlayers || 8,
+        settings: options.settings || {},
+        roomName: options.roomName || null,
+        ...options
+      };
+
+      this.lobby.send('create_room', roomOptions);
+      
+      const timeout = setTimeout(() => {
+        reject(new Error('Timeout creating room'));
+      }, 10000);
+
+      const handleRoomCreated = async (data) => {
+        clearTimeout(timeout);
+        this.lobby.off('room_created', handleRoomCreated);
+        this.lobby.off('error', handleError);
+        
+        try {
+          // Join the created room
+          await this.joinRoom(data.roomId);
+          this.emit('room_created', data);
+          resolve({
+            roomId: data.roomId,
+            roomCode: data.roomCode,
+            inviteLink: `${window.location.origin}/games/${gameId}/rooms?join=${data.roomCode}`
+          });
+        } catch (error) {
+          reject(error);
+        }
+      };
+
+      const handleError = (error) => {
+        clearTimeout(timeout);
+        this.lobby.off('room_created', handleRoomCreated);
+        this.lobby.off('error', handleError);
+        reject(new Error(error.message || 'Failed to create room'));
+      };
+
+      this.lobby.onMessage('room_created', handleRoomCreated);
+      this.lobby.onMessage('error', handleError);
+    });
+  }
+
+  async joinRoomByCode(roomCode) {
+    if (!this.lobby) {
+      await this.connectToLobby();
+    }
+
+    return new Promise((resolve, reject) => {
+      this.lobby.send('join_by_code', { roomCode });
+      
+      const timeout = setTimeout(() => {
+        reject(new Error('Timeout joining room by code'));
+      }, 10000);
+
+      const handleJoinSuccess = async (data) => {
+        clearTimeout(timeout);
+        this.lobby.off('join_room_success', handleJoinSuccess);
+        this.lobby.off('error', handleError);
+        
+        try {
+          await this.joinRoom(data.roomId);
+          resolve(data.roomId);
+        } catch (error) {
+          reject(error);
+        }
+      };
+
+      const handleError = (error) => {
+        clearTimeout(timeout);
+        this.lobby.off('join_room_success', handleJoinSuccess);
+        this.lobby.off('error', handleError);
+        reject(new Error(error.message || 'Failed to join room'));
+      };
+
+      this.lobby.onMessage('join_room_success', handleJoinSuccess);
+      this.lobby.onMessage('error', handleError);
+    });
+  }
+
+  setupLobbyHandlers() {
+    if (!this.lobby) return;
+
+    this.lobby.onMessage('rooms_updated', (data) => {
+      this.emit('rooms_updated', data);
+    });
+
+    this.lobby.onMessage('room_state_changed', (data) => {
+      this.emit('room_state_changed', data);
+    });
+
+    this.lobby.onError((code, message) => {
+      console.error(`❌ Lobby error (${code}): ${message}`);
+      this.emit('error', { code, message });
+    });
+
+    this.lobby.onLeave((code) => {
+      console.log(`🔌 Disconnected from lobby (code: ${code})`);
+      this.lobby = null;
+    });
   }
 
   // Room management
@@ -380,9 +543,79 @@ class MultiplayerSDK {
     return serialized;
   }
 
+  // Room statistics and info
+  async getRoomStatistics(gameId) {
+    if (!this.lobby) {
+      await this.connectToLobby();
+    }
+
+    return new Promise((resolve, reject) => {
+      this.lobby.send('get_room_statistics', { gameId });
+      
+      const timeout = setTimeout(() => {
+        reject(new Error('Timeout getting room statistics'));
+      }, 5000);
+
+      const handleStatsResponse = (data) => {
+        clearTimeout(timeout);
+        this.lobby.off('room_statistics', handleStatsResponse);
+        resolve(data);
+      };
+
+      this.lobby.onMessage('room_statistics', handleStatsResponse);
+    });
+  }
+
+  async findSimilarRooms(gameId, playerCount = null) {
+    const rooms = await this.getActiveRooms(gameId);
+    
+    return rooms.filter(room => {
+      // Filter out full rooms
+      if (room.playerCount >= room.maxPlayers) return false;
+      
+      // If playerCount specified, find rooms with similar player counts
+      if (playerCount !== null) {
+        const difference = Math.abs(room.playerCount - playerCount);
+        return difference <= 2; // Within 2 players
+      }
+      
+      return true;
+    }).sort((a, b) => {
+      // Sort by player count (fuller rooms first, but not full)
+      return b.playerCount - a.playerCount;
+    });
+  }
+
+  // Enhanced room operations
+  async quickMatchWithPreferences(gameId, preferences = {}) {
+    try {
+      // First try to find a suitable existing room
+      const similarRooms = await this.findSimilarRooms(gameId, preferences.preferredPlayerCount);
+      
+      if (similarRooms.length > 0) {
+        const bestRoom = similarRooms[0];
+        await this.joinRoom(bestRoom.roomId);
+        return bestRoom.roomId;
+      }
+      
+      // If no suitable room found, create one
+      return await this.createRoomWithOptions(gameId, {
+        isPrivate: false,
+        maxPlayers: preferences.maxPlayers || 8,
+        settings: preferences.settings || {}
+      });
+      
+    } catch (error) {
+      console.error('Enhanced quick match failed:', error);
+      // Fallback to regular quick match
+      return await this.quickMatch(gameId, preferences);
+    }
+  }
+
   // Cleanup
   disconnect() {
     this.leaveRoom();
+    this.disconnectFromLobby();
     if (this.client) {
       // Colyseus client doesn't have explicit disconnect method
       this.client = null;

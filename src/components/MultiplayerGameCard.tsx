@@ -103,6 +103,10 @@ export default function MultiplayerGameCard({
     router.push(href);
   };
 
+  const handleViewRooms = () => {
+    router.push(`/games/${gameId}/rooms`);
+  };
+
   return (
     <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
       <div className="aspect-video bg-gray-200 relative">
@@ -137,6 +141,13 @@ export default function MultiplayerGameCard({
         <div className="space-y-2">
           {isMultiplayer ? (
             <>
+              <button
+                onClick={handleViewRooms}
+                className="w-full bg-gaming-accent hover:bg-gaming-accent/80 text-white py-2 px-4 rounded font-medium transition-colors"
+              >
+                🏠 View Rooms
+              </button>
+              
               <button
                 onClick={handleQuickMatch}
                 disabled={isLoading}

@@ -617,46 +617,14 @@ class BaseGameRoom extends Room {
     
     console.log(`🗑️ Disposing room ${roomCode} (${gameId}) - had ${playerCount} players`);
     
-    // Enhanced lobby notification for room disposal (Requirement 3.6)
-    try {
-      // Find lobby room and notify it about disposal
-      this.presence.find({ roomName: 'lobby' }).then(lobbyRooms => {
-        if (lobbyRooms.length > 0) {
-          // Notify all lobby instances (in case of multiple lobby rooms)
-          lobbyRooms.forEach(lobbyRoom => {
-            try {
-              // Send disposal notification to lobby
-              if (lobbyRoom.send) {
-                lobbyRoom.send('room_disposed', {
-                  roomId: this.roomId,
-                  roomCode: roomCode,
-                  gameId: gameId,
-                  reason: playerCount === 0 ? 'empty' : 'shutdown',
-                  timestamp: Date.now()
-                });
-              }
-            } catch (notifyError) {
-              console.warn(`⚠️ Could not notify lobby ${lobbyRoom.roomId}:`, notifyError.message);
-            }
-          });
-        }
-      }).catch(error => {
-        console.warn('⚠️ Could not find lobby rooms for disposal notification:', error.message);
-      });
-      
-      // Also try direct method call if available
-      const lobbyRooms = Array.from(this.presence.rooms?.values() || [])
-        .filter(room => room.roomName === 'lobby');
-      
-      if (lobbyRooms.length > 0) {
-        const lobby = lobbyRooms[0];
-        if (lobby && typeof lobby.removeRoom === 'function') {
-          lobby.removeRoom(this.roomId);
-        }
-      }
-    } catch (error) {
-      console.error('❌ Error notifying lobby of room disposal:', error);
-    }
+    // Notify lobby via presence pub/sub (works across processes)
+    this.publishLobbyEvent('room_disposed', {
+      roomId: this.roomId,
+      roomCode: roomCode,
+      gameId: gameId,
+      reason: playerCount === 0 ? 'empty' : 'shutdown',
+      timestamp: Date.now()
+    });
     
     // Log disposal reason for monitoring (Requirement 12.1)
     const disposalReason = playerCount === 0 ? 'EMPTY_ROOM' : 'SHUTDOWN';
@@ -718,26 +686,29 @@ class BaseGameRoom extends Room {
     // Update metadata
     this.updateRoomMetadata();
     
-    // Notify lobby of state change
-    try {
-      this.presence.find({ roomName: 'lobby' }).then(lobbyRooms => {
-        lobbyRooms.forEach(lobbyRoom => {
-          if (lobbyRoom.broadcastRoomStateUpdate) {
-            lobbyRoom.broadcastRoomStateUpdate(this.roomId, newState, {
-              oldState,
-              playerCount: this.state.getConnectedPlayers().length,
-              ...additionalData
-            });
-          }
-        });
-      }).catch(error => {
-        console.warn('⚠️ Could not notify lobby of state change:', error.message);
-      });
-    } catch (error) {
-      console.warn('⚠️ Error notifying lobby of state transition:', error.message);
-    }
+    // Notify lobby via presence pub/sub (distributed-safe)
+    this.publishLobbyEvent('room_state_changed', {
+      roomId: this.roomId,
+      newState,
+      additionalData: {
+        oldState,
+        playerCount: this.state.getConnectedPlayers().length,
+        ...additionalData
+      }
+    });
     
     console.log(`🔄 Room ${this.state.roomCode} transitioned: ${oldState} → ${newState}`);
+  }
+
+  // Publish a lobby event through presence (no-op if presence unavailable)
+  publishLobbyEvent(type, data) {
+    try {
+      if (!this.presence || typeof this.presence.publish !== 'function') return;
+      const payload = JSON.stringify({ type, data });
+      this.presence.publish('lobby:events', payload);
+    } catch (e) {
+      console.warn('⚠️ Failed to publish lobby event:', e.message);
+    }
   }
 
   // Override these methods in subclasses

@@ -27,3 +27,7 @@ export { MobileErrorHandler } from './MobileErrorHandler';
 export { default as GameCompatibilityChecker } from './GameCompatibilityChecker';
 export { default as CompatibilityAwareMobileGameWrapper } from './CompatibilityAwareMobileGameWrapper';
 export { MobileAnalyticsDashboard } from './MobileAnalyticsDashboard';
+export { default as RoomCard } from './RoomCard';
+export { default as RoomsList } from './RoomsList';
+export { default as CreateRoomModal } from './CreateRoomModal';
+export { default as RoomSharingModal } from './RoomSharingModal';

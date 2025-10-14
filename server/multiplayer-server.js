@@ -1,5 +1,15 @@
 const { Server } = require('colyseus');
 const { monitor } = require('@colyseus/monitor');
+// Redis Presence / Driver (distributed rooms + presence)
+let RedisPresence, RedisDriver, IORedis;
+try {
+  ({ RedisPresence } = require('@colyseus/redis-presence'));
+  ({ RedisDriver } = require('@colyseus/redis-driver'));
+  IORedis = require('ioredis');
+} catch (err) {
+  // Packages may not be installed in some environments (dev fallback)
+  console.warn('Redis presence/driver not available yet. Install @colyseus/redis-presence and @colyseus/redis-driver to enable.');
+}
 const { createServer } = require('http');
 const express = require('express');
 const cors = require('cors');
@@ -9,6 +19,7 @@ const rateLimit = require('express-rate-limit');
 const { GameLobby } = require('./rooms/GameLobby');
 const { SnakeRoom } = require('./rooms/SnakeRoom');
 const { BoxJumpRoom } = require('./rooms/BoxJumpRoom');
+const { BattleRoom } = require('./rooms/BattleRoom');
 
 class MultiplayerServer {
   constructor() {
@@ -76,6 +87,32 @@ class MultiplayerServer {
   }
 
   initializeServer() {
+    // Resolve Redis connection options (optional)
+    const getRedisUrl = () => {
+      if (process.env.REDIS_URL) return process.env.REDIS_URL;
+      const host = process.env.REDIS_HOST || '127.0.0.1';
+      const port = process.env.REDIS_PORT || '6379';
+      const password = process.env.REDIS_PASSWORD ? `:${process.env.REDIS_PASSWORD}@` : '';
+      return `redis://${password}${host}:${port}`;
+    };
+
+    // Optionally configure Redis Presence + Driver if available
+    let presenceInstance;
+    let driverInstance;
+    if (RedisPresence && RedisDriver) {
+      try {
+        const redisUrl = getRedisUrl();
+        // Pass the URL/options directly to both Presence and Driver
+        // (RedisDriver expects connection options, not a prebuilt client)
+        presenceInstance = new RedisPresence(redisUrl);
+        driverInstance = new RedisDriver(redisUrl);
+
+        console.log('📦 Redis configured for Presence and Driver:', redisUrl);
+      } catch (e) {
+        console.warn('⚠️ Failed to initialize Redis Presence/Driver. Falling back to in-memory.', e.message);
+      }
+    }
+
     // Initialize Colyseus server with WebSocket transport
     this.gameServer = new Server({
       server: this.server,
@@ -83,6 +120,9 @@ class MultiplayerServer {
       pingInterval: 6000,
       pingMaxRetries: 3,
       gracefullyShutdown: true,
+      // Enable Redis-backed presence/driver when available
+      ...(presenceInstance ? { presence: presenceInstance } : {}),
+      ...(driverInstance ? { driver: driverInstance } : {}),
     });
 
     // Add Colyseus monitor for development and staging
@@ -108,6 +148,11 @@ class MultiplayerServer {
 
     this.gameServer.define('box_jump_game', BoxJumpRoom, {
       maxClients: 10,
+    });
+
+    // The Battle rooms
+    this.gameServer.define('battle_game', BattleRoom, {
+      maxClients: 8,
     });
 
     console.log('✅ Room handlers registered successfully');

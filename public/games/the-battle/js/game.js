@@ -13,6 +13,19 @@ class TankBattleGame extends Phaser.Scene {
         this.gameStarted = false;
         this.playerHealth = 100;
         this.score = 0;
+
+        // Networking state (Colyseus client)
+        this.net = {
+            enabled: false,
+            client: null,
+            room: null,
+            isHost: false,
+            lastUpdateSent: 0,
+            updateInterval: 50, // ms
+            serverUrl: 'ws://localhost:3002',
+            roomId: null,
+            roomCode: null,
+        };
     }
 
     preload() {
@@ -65,11 +78,18 @@ class TankBattleGame extends Phaser.Scene {
             strokeThickness: 1
         }).setOrigin(0.5);
 
-        // Create player tank
-        this.createPlayerTank();
-
-        // Create AI tanks
-        this.createAITanks();
+        // Initialize networking first (if connection info present), then set up tanks
+        this.initializeNetworking().then(() => {
+            // Create player tank (server may override type/position via initial_state)
+            this.createPlayerTank();
+            // Keep AI for now
+            this.createAITanks();
+            this.maybeAutoReadyAndStart();
+        }).catch(() => {
+            // Fallback to offline demo
+            this.createPlayerTank();
+            this.createAITanks();
+        });
 
         // Add click handler to focus the game
         this.input.on('pointerdown', () => {
@@ -115,7 +135,7 @@ class TankBattleGame extends Phaser.Scene {
             });
         }
 
-        // Start game
+        // Start game (multiplayer may change state later)
         this.gameStarted = true;
 
         // Update UI
@@ -136,6 +156,135 @@ class TankBattleGame extends Phaser.Scene {
             callbackScope: this,
             loop: true
         });
+    }
+
+    async initializeNetworking() {
+        try {
+            const getParam = (k) => new URLSearchParams(window.location.search).get(k);
+            const info = (typeof window !== 'undefined' && window.gameConnectionInfo) ? window.gameConnectionInfo : null;
+            if (info) {
+                this.net.serverUrl = info.serverUrl || this.net.serverUrl;
+                this.net.roomId = info.roomId || null;
+                this.net.roomCode = info.roomCode || null;
+            } else {
+                this.net.serverUrl = getParam('serverUrl') || this.net.serverUrl;
+                this.net.roomId = getParam('roomId');
+                this.net.roomCode = getParam('roomCode');
+            }
+
+            if (!window.Colyseus) throw new Error('Colyseus.js not loaded');
+            const client = new window.Colyseus.Client(this.net.serverUrl);
+            this.net.client = client;
+
+            let room = null;
+            if (this.net.roomId) {
+                room = await client.joinById(this.net.roomId, { name: 'Player' });
+            } else {
+                room = await client.joinOrCreate('battle_game', { name: 'Player' });
+            }
+
+            this.net.room = room;
+            this.net.enabled = true;
+
+            // Base room messages
+            room.onMessage('welcome', (msg) => {
+                this.net.isHost = !!msg?.isHost;
+            });
+            room.onMessage('player_left', (msg) => {
+                const id = msg?.playerId;
+                if (id && this.players[id]) {
+                    this.players[id].tank?.destroy();
+                    this.players[id].typeText?.destroy();
+                    delete this.players[id];
+                }
+            });
+            room.onMessage('game_started', () => {
+                this.gameStarted = true;
+            });
+
+            // Battle-specific messages
+            room.onMessage('initial_state', (msg) => {
+                try {
+                    if (msg?.self && this.playerTank) {
+                        this.applyTankType(this.playerTank, msg.self.type);
+                        this.playerTank.x = msg.self.x;
+                        this.playerTank.y = msg.self.y;
+                        this.playerTank.rotation = msg.self.rotation;
+                        this.playerTank.health = msg.self.health;
+                        if (this.playerTank.typeText) this.playerTank.typeText.setPosition(this.playerTank.x, this.playerTank.y - 35);
+                    }
+                    if (Array.isArray(msg?.players)) {
+                        msg.players.forEach(p => this.createOrUpdateRemotePlayer(p));
+                    }
+                } catch (_) {}
+            });
+
+            room.onMessage('player_spawn', (data) => this.createOrUpdateRemotePlayer(data));
+            room.onMessage('player_update', (data) => this.createOrUpdateRemotePlayer(data));
+            room.onMessage('shoot', (data) => this.spawnRemoteBullet(data));
+            room.onMessage('powerup_collected', (data) => {
+                const id = data?.powerUpId;
+                if (id && this.powerUps[id]) {
+                    this.powerUps[id].typeText?.destroy();
+                    this.powerUps[id].destroy();
+                    delete this.powerUps[id];
+                }
+            });
+
+            room.onLeave(() => { this.net.enabled = false; });
+
+            // Ask for a fresh snapshot
+            room.send('request_initial_state', {});
+
+            // Mark ready automatically
+            this.time.delayedCall(300, () => { try { room.send('ready', { ready: true }); } catch (_) {} });
+        } catch (err) {
+            // If any error occurs, keep playing offline
+            this.net.enabled = false;
+            throw err;
+        }
+    }
+
+    maybeAutoReadyAndStart() {
+        if (this.net.enabled && this.net.isHost) {
+            this.time.delayedCall(2000, () => { try { this.net.room.send('start_game', {}); } catch (_) {} });
+        }
+    }
+
+    createOrUpdateRemotePlayer(data) {
+        if (!data?.id) return;
+        if (this.net.room && data.id === this.net.room.sessionId) return;
+
+        const typeEmojis = { rock: '🗿', paper: '📄', scissors: '✂️' };
+        const existing = this.players[data.id];
+        if (!existing) {
+            const tank = this.add.circle(data.x || 400, data.y || 500, 18, 0x8888ff);
+            tank.setStrokeStyle(2, 0xcccccc);
+            tank.rotation = data.rotation || 0;
+            tank.isPlayer = false;
+            tank.health = data.health ?? 100;
+            tank.type = data.type || 'paper';
+            this.applyTankType(tank, tank.type, 18);
+            const typeText = this.add.text(tank.x, tank.y - 30, typeEmojis[tank.type] || '📄', { fontSize: '16px' }).setOrigin(0.5);
+            this.players[data.id] = { tank, typeText };
+        } else {
+            const { tank, typeText } = existing;
+            if (typeof data.x === 'number') tank.x = data.x;
+            if (typeof data.y === 'number') tank.y = data.y;
+            if (typeof data.rotation === 'number') tank.rotation = data.rotation;
+            if (typeof data.health === 'number') tank.health = data.health;
+            if (typeof data.type === 'string' && data.type !== tank.type) {
+                this.applyTankType(tank, data.type, 18);
+                if (typeText) typeText.setText(typeEmojis[data.type] || '📄');
+            }
+            if (typeText) typeText.setPosition(tank.x, tank.y - 30);
+        }
+    }
+
+    spawnRemoteBullet(data) {
+        if (!data) return;
+        const proxy = { x: data.x, y: data.y, rotation: data.rotation, type: data.type, isPlayer: false };
+        this.shootBullet(proxy, true);
     }
 
     createPlayerTank() {
@@ -214,6 +363,9 @@ class TankBattleGame extends Phaser.Scene {
 
         // Check collisions
         this.checkCollisions();
+
+        // Sync local player state to server
+        this.syncLocalPlayer(time);
 
         // Update UI
         this.updateUI();
@@ -339,7 +491,7 @@ class TankBattleGame extends Phaser.Scene {
         });
     }
 
-    shootBullet(tank) {
+    shootBullet(tank, isRemote = false) {
         const bulletSpeed = 8;
         const bulletSize = this.getBulletSizeForType(tank.type);
         const bulletColor = this.getBulletColorForType(tank.type);
@@ -358,6 +510,18 @@ class TankBattleGame extends Phaser.Scene {
 
         const bulletId = Date.now() + Math.random();
         this.bullets[bulletId] = bullet;
+
+        // Notify server of local shot
+        if (!isRemote && this.net.enabled && tank === this.playerTank) {
+            try {
+                this.net.room.send('shoot', {
+                    x: bullet.x,
+                    y: bullet.y,
+                    rotation: tank.rotation,
+                    type: tank.type,
+                });
+            } catch (_) {}
+        }
     }
 
     updateBullets() {
@@ -533,6 +697,11 @@ class TankBattleGame extends Phaser.Scene {
             powerUp.typeText.destroy();
         }
         delete this.powerUps[powerUpId];
+
+        // Notify other players
+        if (this.net.enabled) {
+            try { this.net.room.send('powerup_collected', { powerUpId }); } catch (_) {}
+        }
     }
 
     getSpeedForType(type) {
@@ -560,6 +729,29 @@ class TankBattleGame extends Phaser.Scene {
             case 'scissors': return 0x66ff66;
             default: return 0xffffff;
         }
+    }
+
+    syncLocalPlayer(nowTime) {
+        if (!this.net.enabled || !this.playerTank) return;
+        if (nowTime - this.net.lastUpdateSent < this.net.updateInterval) return;
+        this.net.lastUpdateSent = nowTime;
+        try {
+            this.net.room.send('player_update', {
+                x: this.playerTank.x,
+                y: this.playerTank.y,
+                rotation: this.playerTank.rotation,
+                type: this.playerTank.type,
+                health: this.playerTank.health,
+            });
+        } catch (_) {}
+    }
+
+    applyTankType(tank, type, radius = 20) {
+        const tankColors = { rock: 0xff4444, paper: 0x4444ff, scissors: 0x44ff44 };
+        tank.type = type || 'paper';
+        tank.setFillStyle(tankColors[tank.type] || 0x4444ff);
+        if (tank.setStrokeStyle) tank.setStrokeStyle(3, 0xffffff);
+        if (typeof tank.setRadius === 'function') tank.setRadius(radius);
     }
 
     updateUI() {

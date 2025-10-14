@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { CardContent } from '@/components/ui';
 import { Button } from '@/components/ui';
 import OptimizedImage from '@/components/ui/OptimizedImage';
@@ -8,7 +9,8 @@ import {
   PlayIcon, 
   HeartIcon, 
   StarIcon,
-  FireIcon 
+  FireIcon,
+  UserGroupIcon
 } from '@heroicons/react/24/solid';
 import { HeartIcon as HeartOutlineIcon } from '@heroicons/react/24/outline';
 import { Game } from '@/types';
@@ -31,6 +33,10 @@ const GameCard: React.FC<GameCardProps> = ({
   size = 'md'
 }) => {
   const [isPressed, setIsPressed] = useState(false);
+  const router = useRouter();
+  
+  // Check if this is a multiplayer game
+  const isMultiplayer = game.category.slug === 'multiplayer';
   
   const sizeClasses = {
     sm: 'aspect-[4/3]',
@@ -60,6 +66,11 @@ const GameCard: React.FC<GameCardProps> = ({
   const handlePlayClick = (e: React.MouseEvent | React.TouchEvent) => {
     e.stopPropagation();
     onGameClick?.(game);
+  };
+
+  const handleViewRooms = (e: React.MouseEvent | React.TouchEvent) => {
+    e.stopPropagation();
+    router.push(`/games/${game.slug}/rooms`);
   };
 
   // Mobile touch handlers
@@ -99,6 +110,12 @@ const GameCard: React.FC<GameCardProps> = ({
         
         {/* Badges */}
         <div className="absolute top-2 left-2 flex gap-2">
+          {isMultiplayer && (
+            <span className="bg-gaming-accent text-white text-xs font-bold px-2 py-1 rounded-full flex items-center">
+              <UserGroupIcon className="h-3 w-3 mr-1" />
+              MULTIPLAYER
+            </span>
+          )}
           {game.isFeatured && (
             <span className="bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full flex items-center">
               <FireIcon className="h-3 w-3 mr-1" />
@@ -170,18 +187,44 @@ const GameCard: React.FC<GameCardProps> = ({
           </span>
         </div>
 
-        {/* Play Button */}
-        <Button 
-          size="sm" 
-          className="w-full group-hover:bg-gaming-accent group-hover:text-white transition-all duration-300 touch-manipulation tap-target"
-          variant="outline"
-          onClick={handlePlayClick}
-          onTouchStart={(e) => e.stopPropagation()}
-        >
-          <PlayIcon className="h-4 w-4 mr-2" />
-          <span className="hidden xs:inline">Play Game</span>
-          <span className="xs:hidden">Play</span>
-        </Button>
+        {/* Action Buttons */}
+        {isMultiplayer ? (
+          <div className="space-y-2">
+            <Button 
+              size="sm" 
+              className="w-full bg-gaming-accent hover:bg-gaming-accent/80 text-white transition-all duration-300 touch-manipulation tap-target"
+              onClick={handleViewRooms}
+              onTouchStart={(e) => e.stopPropagation()}
+            >
+              <UserGroupIcon className="h-4 w-4 mr-2" />
+              <span className="hidden xs:inline">View Rooms</span>
+              <span className="xs:hidden">Rooms</span>
+            </Button>
+            <Button 
+              size="sm" 
+              className="w-full group-hover:bg-gaming-accent group-hover:text-white transition-all duration-300 touch-manipulation tap-target"
+              variant="outline"
+              onClick={handlePlayClick}
+              onTouchStart={(e) => e.stopPropagation()}
+            >
+              <PlayIcon className="h-4 w-4 mr-2" />
+              <span className="hidden xs:inline">Play Solo</span>
+              <span className="xs:hidden">Solo</span>
+            </Button>
+          </div>
+        ) : (
+          <Button 
+            size="sm" 
+            className="w-full group-hover:bg-gaming-accent group-hover:text-white transition-all duration-300 touch-manipulation tap-target"
+            variant="outline"
+            onClick={handlePlayClick}
+            onTouchStart={(e) => e.stopPropagation()}
+          >
+            <PlayIcon className="h-4 w-4 mr-2" />
+            <span className="hidden xs:inline">Play Game</span>
+            <span className="xs:hidden">Play</span>
+          </Button>
+        )}
       </CardContent>
     </div>
   );

@@ -66,9 +66,82 @@ class GameLobby extends Room {
     
     // Initialize available games
     this.initializeGames();
+    // Subscribe to cross-room notifications via presence (works with RedisPresence)
+    this.subscribeToRoomEvents();
+    
+    // Register message handlers
+    this.onMessage('create_room', (client, message) => {
+      console.log('📨 Received create_room message:', message);
+      this.handleCreateRoom(client, message).catch(error => {
+        console.error('Error in handleCreateRoom:', error);
+        client.send('error', { 
+          message: 'Failed to create room',
+          code: 'ROOM_CREATION_FAILED'
+        });
+      });
+    });
+
+    this.onMessage('join_room', (client, message) => {
+      this.handleJoinRoom(client, message);
+    });
+
+    this.onMessage('join_private_room', (client, message) => {
+      this.handleJoinPrivateRoom(client, message);
+    });
+
+    this.onMessage('quick_match', (client, message) => {
+      this.handleQuickMatch(client, message);
+    });
+
+    this.onMessage('refresh_rooms', (client, message) => {
+      this.handleRefreshRooms(client);
+    });
+
+    this.onMessage('get_room_stats', (client, message) => {
+      this.handleGetRoomStats(client, message);
+    });
+
+    this.onMessage('room_disposed', (client, message) => {
+      this.handleRoomDisposed(message);
+    });
     
     // Set up room monitoring
     this.setupRoomMonitoring();
+  }
+
+  // Map UI/game ids to actual Colyseus room names
+  getRoomNameForGameId(gameId) {
+    switch (gameId) {
+      case 'snake': return 'snake_game';
+      case 'box_jump': return 'box_jump_game';
+      case 'the-battle': return 'battle_game';
+      default: return undefined;
+    }
+  }
+
+  subscribeToRoomEvents() {
+    try {
+      if (!this.presence || typeof this.presence.subscribe !== 'function') return;
+      // Single channel for room lifecycle/state events
+      this.presence.subscribe('lobby:events', (raw) => {
+        try {
+          const msg = typeof raw === 'string' ? JSON.parse(raw) : raw;
+          if (!msg || !msg.type) return;
+          if (msg.type === 'room_disposed') {
+            this.handleRoomDisposed(msg.data);
+          } else if (msg.type === 'room_state_changed') {
+            const { roomId, newState, additionalData = {} } = msg.data || {};
+            if (roomId && newState) {
+              this.broadcastRoomStateUpdate(roomId, newState, additionalData);
+            }
+          }
+        } catch (e) {
+          console.warn('⚠️ Failed to parse lobby event:', e.message);
+        }
+      });
+    } catch (err) {
+      console.warn('⚠️ Could not subscribe to lobby events:', err.message);
+    }
   }
 
   initializeGames() {
@@ -88,6 +161,15 @@ class GameLobby extends Room {
         minPlayers: 5,
         maxPlayers: 10,
         description: 'Turn-based platformer challenge with 20 levels'
+      },
+      // Add The Battle game so the lobby recognizes and can create rooms for it
+      {
+        id: 'the-battle',
+        name: 'The Battle',
+        roomType: 'battle_game',
+        minPlayers: 2,
+        maxPlayers: 8,
+        description: 'Real-time multiplayer tank battle with rock-paper-scissors mechanics'
       }
     ];
 
@@ -115,28 +197,7 @@ class GameLobby extends Room {
     this.state.playerCount = Math.max(0, this.state.playerCount - 1);
   }
 
-  async onMessage(client, type, message = {}) {
-    switch (type) {
-      case 'create_room':
-        await this.handleCreateRoom(client, message);
-        break;
-      case 'join_room':
-        await this.handleJoinRoom(client, message);
-        break;
-      case 'join_private_room':
-        await this.handleJoinPrivateRoom(client, message);
-        break;
-      case 'quick_match':
-        await this.handleQuickMatch(client, message);
-        break;
-      case 'refresh_rooms':
-        this.handleRefreshRooms(client);
-        break;
-      case 'get_room_stats':
-        this.handleGetRoomStats(client, message);
-        break;
-    }
-  }
+
 
   async handleCreateRoom(client, { gameId, isPrivate = false, settings = {} }) {
     try {
@@ -161,19 +222,21 @@ class GameLobby extends Room {
         roomCode
       };
 
-      const room = await this.presence.create(gameInfo.roomType, roomOptions);
+      // Create room via matchMaker - use the global matchMaker
+      const { matchMaker } = require('colyseus');
+      const createdRoom = await matchMaker.createRoom(gameInfo.roomType, roomOptions);
       
       // Track the room with proper room code
-      this.trackRoom(room.roomId, gameId, gameInfo.maxPlayers, isPrivate, roomCode);
+      this.trackRoom(createdRoom.roomId, gameId, gameInfo.maxPlayers, isPrivate, roomCode);
       
       client.send('room_created', {
-        roomId: room.roomId,
+        roomId: createdRoom.roomId,
         roomCode: roomCode,
         gameId: gameId,
         isPrivate: isPrivate
       });
 
-      console.log(`🏗️ Created ${isPrivate ? 'private' : 'public'} ${gameId} room: ${room.roomId} (${roomCode})`);
+      console.log(`🏗️ Created ${isPrivate ? 'private' : 'public'} ${gameId} room: ${createdRoom.roomId} (${roomCode})`);
       
     } catch (error) {
       console.error('Failed to create room:', error);
@@ -236,26 +299,28 @@ class GameLobby extends Room {
         return;
       }
 
-      // Double-check room capacity with live data
+      // Double-check room capacity via matchMaker query (best-effort)
       try {
-        const liveRooms = await this.presence.find({ roomId });
-        if (liveRooms.length > 0) {
-          const liveRoom = liveRooms[0];
-          if (liveRoom.clients >= liveRoom.maxClients) {
-            console.log(`🚫 Room ${trackedRoom.roomCode} is full (live check): ${liveRoom.clients}/${liveRoom.maxClients}`);
-            client.send('error', { 
-              message: 'Room is full (verified)',
-              code: 'ROOM_FULL_VERIFIED',
-              details: {
-                playerCount: liveRoom.clients,
-                maxPlayers: liveRoom.maxClients
-              }
-            });
-            return;
-          }
+        const { matchMaker } = require('colyseus');
+        const roomName = this.getRoomNameForGameId(trackedRoom.gameId);
+        const rooms = typeof matchMaker.query === 'function'
+          ? await matchMaker.query(roomName ? { name: roomName } : {})
+          : [];
+        const liveRoom = rooms?.find?.((r) => r.roomId === roomId);
+        if (liveRoom && liveRoom.clients >= liveRoom.maxClients) {
+          console.log(`🚫 Room ${trackedRoom.roomCode} is full (verified): ${liveRoom.clients}/${liveRoom.maxClients}`);
+          client.send('error', { 
+            message: 'Room is full (verified)',
+            code: 'ROOM_FULL_VERIFIED',
+            details: {
+              playerCount: liveRoom.clients,
+              maxPlayers: liveRoom.maxClients
+            }
+          });
+          return;
         }
-      } catch (presenceError) {
-        console.warn('⚠️ Could not verify room capacity with presence:', presenceError.message);
+      } catch (verifyError) {
+        console.warn('⚠️ Could not verify room capacity:', verifyError.message);
       }
 
       client.send('join_room', { 
@@ -376,16 +441,17 @@ class GameLobby extends Room {
           roomCode
         };
 
-        const room = await this.presence.create(gameInfo.roomType, roomOptions);
-        this.trackRoom(room.roomId, gameId, gameInfo.maxPlayers, false, roomCode);
+        const { matchMaker } = require('colyseus');
+        const createdRoom = await matchMaker.createRoom(gameInfo.roomType, roomOptions);
+        this.trackRoom(createdRoom.roomId, gameId, gameInfo.maxPlayers, false, roomCode);
         
         client.send('join_room', { 
-          roomId: room.roomId,
+          roomId: createdRoom.roomId,
           roomCode: roomCode,
           gameId: gameId,
           isQuickMatch: true
         });
-        console.log(`⚡ Quick match: created new room ${room.roomId} (${roomCode})`);
+        console.log(`⚡ Quick match: created new room ${createdRoom.roomId} (${roomCode})`);
       }
       
     } catch (error) {
@@ -430,12 +496,8 @@ class GameLobby extends Room {
     // Monitor room changes every 3 seconds for better responsiveness (Requirement 12.1)
     this.roomMonitorInterval = setInterval(async () => {
       try {
-        // Check if presence is available (only in proper Colyseus context)
-        if (!this.presence || typeof this.presence.find !== 'function') {
-          return; // Skip monitoring if not in proper server context
-        }
-        
-        const currentRooms = await this.presence.find({});
+        const { matchMaker } = require('colyseus');
+        const currentRooms = typeof matchMaker.query === 'function' ? await matchMaker.query({}) : [];
         const currentRoomIds = new Set(currentRooms.map(r => r.roomId));
         
         // Remove rooms that no longer exist (Requirement 3.6)
@@ -734,32 +796,6 @@ class GameLobby extends Room {
         })
       )
     };
-  }
-
-  async onMessage(client, type, message = {}) {
-    switch (type) {
-      case 'create_room':
-        await this.handleCreateRoom(client, message);
-        break;
-      case 'join_room':
-        await this.handleJoinRoom(client, message);
-        break;
-      case 'join_private_room':
-        await this.handleJoinPrivateRoom(client, message);
-        break;
-      case 'quick_match':
-        await this.handleQuickMatch(client, message);
-        break;
-      case 'refresh_rooms':
-        this.handleRefreshRooms(client);
-        break;
-      case 'get_room_stats':
-        this.handleGetRoomStats(client, message);
-        break;
-      case 'room_disposed':
-        this.handleRoomDisposed(message);
-        break;
-    }
   }
 
   // Handle room disposal notifications (Requirement 3.6)
