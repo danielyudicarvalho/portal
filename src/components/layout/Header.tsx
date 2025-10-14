@@ -11,6 +11,7 @@ import {
 } from '@heroicons/react/24/outline';
 import Button from '../ui/Button';
 import Input from '../ui/Input';
+import { signIn, signOut, useSession } from 'next-auth/react';
 
 interface HeaderProps {
   onMobileMenuToggle?: () => void;
@@ -25,6 +26,8 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle, isMobileMenuOpen })
 
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const { data: session, status } = useSession();
+  const isAuthenticated = status === 'authenticated';
 
   const navigation = [
     { name: 'Home', href: '/' },
@@ -110,38 +113,68 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle, isMobileMenuOpen })
               <MagnifyingGlassIcon className="h-5 w-5" />
             </button>
 
-            {/* User Menu - Replace with actual auth logic */}
+            {/* User Menu */}
             <div className="flex items-center space-x-1 sm:space-x-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className="hidden xs:inline-flex text-xs sm:text-sm px-2 sm:px-3 py-1 sm:py-2 touch-manipulation"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  // TODO: Integrate login flow
-                }}
-              >
-                Login
-              </Button>
-              <Button
-                variant="primary"
-                size="sm"
-                className="text-xs sm:text-sm px-2 sm:px-3 py-1 sm:py-2 touch-manipulation"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  // TODO: Integrate sign-up flow
-                }}
-              >
-                <span className="hidden xs:inline">Sign Up</span>
-                <span className="xs:hidden">Join</span>
-              </Button>
+              {!isAuthenticated && (
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="hidden xs:inline-flex text-xs sm:text-sm px-2 sm:px-3 py-1 sm:py-2 touch-manipulation"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      // Use NextAuth default page or go straight to GitHub
+                      // signIn();
+                      signIn('github');
+                    }}
+                  >
+                    Login
+                  </Button>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    className="text-xs sm:text-sm px-2 sm:px-3 py-1 sm:py-2 touch-manipulation"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      // Same flow for sign up via OAuth provider
+                      signIn('github');
+                    }}
+                  >
+                    <span className="hidden xs:inline">Sign Up</span>
+                    <span className="xs:hidden">Join</span>
+                  </Button>
+                </>
+              )}
 
-              {/* User Avatar (when logged in) */}
-              {/* <button className="p-1 rounded-full text-gray-300 hover:text-white transition-colors touch-manipulation tap-target">
-                <UserCircleIcon className="h-8 w-8" />
-              </button> */}
+              {isAuthenticated && (
+                <>
+                  {session?.user?.image ? (
+                    <img
+                      src={session.user.image}
+                      alt={session.user.name || 'User'}
+                      className="h-8 w-8 rounded-full ring-1 ring-gaming-accent/30"
+                    />
+                  ) : (
+                    <div className="h-8 w-8 rounded-full bg-gaming-accent/30 flex items-center justify-center text-white text-xs font-semibold">
+                      {(session?.user?.name || 'U').slice(0, 1)}
+                    </div>
+                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-xs sm:text-sm px-2 sm:px-3 py-1 sm:py-2 touch-manipulation"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      signOut();
+                    }}
+                  >
+                    Logout
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         </div>
