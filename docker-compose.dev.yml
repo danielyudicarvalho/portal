@@ -44,6 +44,7 @@ services:
       - DATABASE_URL=postgresql://gameuser:gamepass123@postgres:5432/game_portal
       - NEXTAUTH_URL=http://localhost:3000
       - REDIS_URL=redis://redis:6379
+      # Stripe configuration from .env.local will be loaded
     volumes:
       - .:/app
       - /app/node_modules
@@ -55,6 +56,7 @@ services:
         condition: service_healthy
       multiplayer-server:
         condition: service_started
+    command: sh -c "npx prisma migrate deploy && npm run dev"
 
   multiplayer-server:
     build:

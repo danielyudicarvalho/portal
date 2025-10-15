@@ -27,7 +27,13 @@
     "test:coverage": "jest --coverage",
     "generate:icons": "node scripts/generate-icons.js",
     "generate:splash": "node scripts/generate-splash-screens.js",
-    "generate:pwa-assets": "npm run generate:icons && npm run generate:splash"
+    "generate:pwa-assets": "npm run generate:icons && npm run generate:splash",
+    "stripe:listen": "./scripts/test-stripe-webhook.sh",
+    "stripe:test": "./scripts/test-stripe-payment.sh",
+    "docker:start": "./scripts/start-with-docker.sh",
+    "docker:stop": "docker compose -f docker-compose.dev.yml down",
+    "docker:logs": "docker compose -f docker-compose.dev.yml logs -f",
+    "test:balance": "./scripts/test-balance-feature.sh"
   },
   "dependencies": {
     "@colyseus/monitor": "^0.16.7",
@@ -50,6 +56,9 @@
     "react": "^18.3.0",
     "react-dom": "^18.3.0",
     "socket.io": "^4.7.2",
+    "stripe": "^14.0.0",
+    "@stripe/stripe-js": "^2.4.0",
+    "@stripe/react-stripe-js": "^2.4.0",
     "tailwind-merge": "^2.5.0",
     "tailwindcss": "^3.4.0"
   },
