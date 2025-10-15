@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Snake Game</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #2c3e50;
+            font-family: Arial, sans-serif;
+        }
+
+        #game-container {
+            text-align: center;
+        }
+
+        h1 {
+            color: #ecf0f1;
+            margin-bottom: 20px;
+        }
+
+        #score {
+            color: #ecf0f1;
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        #instructions {
+            color: #bdc3c7;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="game-container">
+        <h1>Snake Game</h1>
+        <div id="score">Your Score: 0</div>
+        <div id="game"></div>
+        <div id="instructions">
+            <strong>Online Multiplayer Snake Battle - 5 Minute Sessions</strong><br>
+            Use WASD or Arrow Keys to move<br>
+            <strong>Shooting: Press X to shoot straight ahead (costs 5 points)</strong><br>
+            <strong>Armor: Press Z to activate armor (costs 5 points, lasts 10 seconds)</strong><br>
+            Eat purple ⚡ food to get +5 points and 1 shot<br>
+            Eat gray 🛡️ food to get +5 points and 1 armor<br>
+            <strong style="color: #e74c3c;">AVOID moving dark red ☠️ poison food - it kills instantly! (Lasts 20 seconds)</strong><br>
+            Up to 8 players can join from different computers<br>
+            <strong>Dead players can respawn during the session (Press R)</strong><br>
+            Sessions last 5 minutes, then restart automatically<br>
+            <div id="connection-status">Connecting...</div>
+            <div id="player-count">Players: 0</div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.70.0/dist/phaser.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="game.js"></script>
+</body>
+
+</html>

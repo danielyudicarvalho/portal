@@ -1,8 +1,8 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
+// Prisma schema for Game Portal + NextAuth
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl"]
 }
 
 datasource db {
@@ -11,9 +11,15 @@ datasource db {
 }
 
 model User {
-  id          String   @id @default(cuid())
-  email       String   @unique
-  username    String   @unique
+  id            String   @id @default(cuid())
+  // NextAuth standard fields
+  name          String?
+  email         String   @unique
+  emailVerified DateTime?
+  image         String?
+
+  // Existing domain fields
+  username    String?  @unique
   firstName   String?
   lastName    String?
   avatar      String?
@@ -22,12 +28,54 @@ model User {
   role        Role     @default(USER)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  
+
   // Relations
-  favorites     UserFavorite[]
-  gameHistory   GameSession[]
-  
+  accounts   Account[]
+  sessions   Session[]
+  favorites  UserFavorite[]
+  gameHistory GameSession[]
+
   @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
 }
 
 model Game {
@@ -42,14 +90,14 @@ model Game {
   popularity  Int      @default(0)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  
+
   // Relations
   categoryId    String
   category      GameCategory @relation(fields: [categoryId], references: [id])
   favorites     UserFavorite[]
   gameHistory   GameSession[]
   tags          GameTag[]
-  
+
   @@map("games")
 }
 
@@ -63,10 +111,10 @@ model GameCategory {
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  
+
   // Relations
   games Game[]
-  
+
   @@map("game_categories")
 }
 
@@ -74,27 +122,27 @@ model GameSession {
   id        String    @id @default(cuid())
   startTime DateTime  @default(now())
   endTime   DateTime?
-  duration  Int?      // in seconds
-  
+  duration  Int?
+
   // Relations
   userId String
   user   User   @relation(fields: [userId], references: [id])
   gameId String
   game   Game   @relation(fields: [gameId], references: [id])
-  
+
   @@map("game_sessions")
 }
 
 model UserFavorite {
   id        String   @id @default(cuid())
   createdAt DateTime @default(now())
-  
+
   // Relations
   userId String
   user   User   @relation(fields: [userId], references: [id])
   gameId String
   game   Game   @relation(fields: [gameId], references: [id])
-  
+
   @@unique([userId, gameId])
   @@map("user_favorites")
 }
@@ -102,11 +150,11 @@ model UserFavorite {
 model GameTag {
   id   String @id @default(cuid())
   name String @unique
-  
+
   // Relations
   gameId String
   game   Game   @relation(fields: [gameId], references: [id])
-  
+
   @@map("game_tags")
 }
 
@@ -114,3 +162,4 @@ enum Role {
   USER
   ADMIN
 }
+

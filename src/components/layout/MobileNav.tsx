@@ -4,12 +4,14 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { clsx } from 'clsx';
+import { useSession, signIn, signOut } from 'next-auth/react';
 import {
   HomeIcon,
   PlayIcon,
   GiftIcon,
   UserCircleIcon,
-  WifiIcon
+  WifiIcon,
+  UsersIcon
 } from '@heroicons/react/24/outline';
 import { InstallPrompt } from '@/components/features/InstallPrompt';
 
@@ -107,6 +109,20 @@ const MobileNav: React.FC<MobileNavProps> = ({
       emoji: '🔢',
       description: 'Number sequence game',
       current: pathname === '/games/123'
+    },
+    {
+      name: 'Perfect Square',
+      href: '/games/perfect-square',
+      emoji: '🟦',
+      description: 'Time-based puzzle game',
+      current: pathname === '/games/perfect-square'
+    },
+    {
+      name: 'The Battle',
+      href: '/games/the-battle',
+      emoji: '⚔️',
+      description: 'Multiplayer tank battle',
+      current: pathname === '/games/the-battle'
     }
   ];
 
@@ -116,41 +132,20 @@ const MobileNav: React.FC<MobileNavProps> = ({
 
   return (
     <>
-      {/* Always render a debug indicator */}
-      <div 
-        className="fixed top-20 right-4 z-[100] bg-red-500 text-white p-2 text-xs rounded"
-        style={{ zIndex: 9999 }}
-      >
-        Menu State: {isOpen ? 'OPEN' : 'CLOSED'}
-      </div>
-
       {/* Only render menu when open */}
       {isOpen && (
         <>
           {/* Overlay */}
           <div 
-            className="fixed inset-0 z-40 bg-black/50"
+            className="fixed inset-0 z-40 bg-black/60"
             onClick={onClose}
-            style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
           />
 
           {/* Mobile Navigation Panel */}
           <div 
-            className="fixed top-16 left-0 z-50 w-80 h-screen bg-white shadow-lg"
-            style={{ 
-              backgroundColor: '#1f2937',
-              border: '5px solid lime',
-              width: '320px',
-              height: 'calc(100vh - 64px)'
-            }}
+            className="fixed top-16 left-0 z-50 h-[calc(100vh-64px)] w-80 max-w-full bg-gaming-dark border-r border-gaming-accent/20 shadow-2xl"
           >
         <div className="flex flex-col h-full">
-          {/* Debug Status */}
-          <div className="px-4 py-3 border-b border-gaming-accent/20 bg-red-500">
-            <div className="text-white text-sm">
-              DEBUG: Menu is {isOpen ? 'OPEN' : 'CLOSED'}
-            </div>
-          </div>
 
           {/* Connection Status */}
           <div className="px-4 py-3 border-b border-gaming-accent/20">
@@ -238,6 +233,33 @@ const MobileNav: React.FC<MobileNavProps> = ({
               ))}
             </div>
 
+            {/* Multiplayer Games */}
+            <div className="space-y-2">
+              <h3 className="px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                Multiplayer Games
+              </h3>
+              
+              <Link
+                href="/games/the-battle"
+                onClick={handleLinkClick}
+                className={clsx(
+                  'flex items-center px-4 py-3 text-sm rounded-lg transition-colors tap-target touch-manipulation',
+                  pathname === '/games/the-battle'
+                    ? 'bg-gaming-accent text-white'
+                    : 'text-gray-300 hover:text-white hover:bg-gaming-accent/20 active:bg-gaming-accent/30'
+                )}
+              >
+                <span className="text-lg mr-3 flex-shrink-0">⚔️</span>
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium truncate">The Battle</div>
+                  <div className="text-xs opacity-75 truncate">Real-time tank combat</div>
+                </div>
+                <span className="ml-2 text-xs bg-gaming-accent/20 text-gaming-accent px-2 py-1 rounded-full">
+                  Multiplayer
+                </span>
+              </Link>
+            </div>
+
             {/* Quick Actions */}
             <div className="space-y-2 mt-6">
               <h3 className="px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
@@ -251,6 +273,15 @@ const MobileNav: React.FC<MobileNavProps> = ({
               >
                 <PlayIcon className="h-4 w-4 mr-3" />
                 Browse All Games
+              </Link>
+              
+              <Link
+                href="/games/multiplayer"
+                onClick={handleLinkClick}
+                className="flex items-center px-4 py-3 text-sm text-gray-300 hover:text-white hover:bg-gaming-accent/20 active:bg-gaming-accent/30 rounded-lg transition-colors tap-target touch-manipulation"
+              >
+                <UsersIcon className="h-4 w-4 mr-3" />
+                Multiplayer Games
               </Link>
               
               <Link
@@ -280,20 +311,7 @@ const MobileNav: React.FC<MobileNavProps> = ({
             </Link>
 
             {/* Auth Buttons */}
-            <div className="space-y-3">
-              <button
-                onClick={handleLinkClick}
-                className="w-full px-4 py-3 text-sm font-medium text-gaming-accent border border-gaming-accent rounded-lg hover:bg-gaming-accent hover:text-white active:bg-gaming-accent/90 transition-colors tap-target touch-manipulation"
-              >
-                Login
-              </button>
-              <button
-                onClick={handleLinkClick}
-                className="w-full px-4 py-3 text-sm font-medium text-white bg-gaming-accent hover:bg-gaming-accent/90 active:bg-gaming-accent/80 rounded-lg transition-colors tap-target touch-manipulation"
-              >
-                Sign Up
-              </button>
-            </div>
+            <AuthButtons onClose={onClose} />
 
             {/* Promotional Banner */}
             <div className="mt-4 bg-gradient-to-r from-gaming-accent/20 to-gaming-secondary/20 rounded-lg p-3">
@@ -316,6 +334,75 @@ const MobileNav: React.FC<MobileNavProps> = ({
         </>
       )}
     </>
+  );
+};
+
+// Auth Buttons Component
+const AuthButtons: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+  const { data: session, status } = useSession();
+
+  if (status === 'loading') {
+    return (
+      <div className="space-y-3">
+        <div className="w-full px-4 py-3 bg-gaming-dark/50 rounded-lg animate-pulse">
+          <div className="h-4 bg-gaming-accent/20 rounded"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (session) {
+    return (
+      <div className="space-y-3">
+        <div className="flex items-center space-x-3 p-3 bg-gaming-accent/10 rounded-lg border border-gaming-accent/20">
+          <div className="w-8 h-8 bg-gaming-accent rounded-full flex items-center justify-center">
+            <span className="text-white text-sm font-medium">
+              {session.user?.name?.charAt(0) || session.user?.email?.charAt(0) || 'U'}
+            </span>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-white text-sm font-medium truncate">
+              {session.user?.name || 'User'}
+            </p>
+            <p className="text-gaming-secondary/80 text-xs truncate">
+              {session.user?.email}
+            </p>
+          </div>
+        </div>
+        <button
+          onClick={() => {
+            signOut();
+            onClose();
+          }}
+          className="w-full px-4 py-3 text-sm font-medium text-gaming-danger border border-gaming-danger/50 rounded-lg hover:bg-gaming-danger hover:text-white active:bg-gaming-danger/90 transition-colors tap-target touch-manipulation"
+        >
+          Sign Out
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      <button
+        onClick={() => {
+          signIn();
+          onClose();
+        }}
+        className="w-full px-4 py-3 text-sm font-medium text-gaming-accent border border-gaming-accent rounded-lg hover:bg-gaming-accent hover:text-white active:bg-gaming-accent/90 transition-colors tap-target touch-manipulation"
+      >
+        Login
+      </button>
+      <button
+        onClick={() => {
+          signIn();
+          onClose();
+        }}
+        className="w-full px-4 py-3 text-sm font-medium text-white bg-gaming-accent hover:bg-gaming-accent/90 active:bg-gaming-accent/80 rounded-lg transition-colors tap-target touch-manipulation"
+      >
+        Sign Up
+      </button>
+    </div>
   );
 };
 

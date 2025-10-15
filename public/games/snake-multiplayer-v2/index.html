@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Snake Battle - Multiplayer</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .game-area {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .game-canvas {
+            border: 3px solid #fff;
+            border-radius: 10px;
+            background: #000;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        .sidebar {
+            min-width: 300px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+        }
+
+        .lobby-screen, .game-ui {
+            display: none;
+        }
+
+        .lobby-screen.active, .game-ui.active {
+            display: block;
+        }
+
+        .player-list {
+            margin: 20px 0;
+        }
+
+        .player-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            margin: 5px 0;
+            background: rgba(255,255,255,0.1);
+            border-radius: 5px;
+        }
+
+        .player-item.host {
+            border-left: 4px solid #ffd700;
+        }
+
+        .player-item.ready {
+            background: rgba(76, 175, 80, 0.3);
+        }
+
+        .controls {
+            margin: 20px 0;
+        }
+
+        .btn {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+            transition: background 0.3s;
+        }
+
+        .btn:hover {
+            background: #45a049;
+        }
+
+        .btn:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+
+        .btn.secondary {
+            background: #2196F3;
+        }
+
+        .btn.secondary:hover {
+            background: #1976D2;
+        }
+
+        .btn.danger {
+            background: #f44336;
+        }
+
+        .btn.danger:hover {
+            background: #d32f2f;
+        }
+
+        .input-group {
+            margin: 10px 0;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+
+        .status {
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            text-align: center;
+        }
+
+        .status.info {
+            background: rgba(33, 150, 243, 0.3);
+        }
+
+        .status.success {
+            background: rgba(76, 175, 80, 0.3);
+        }
+
+        .status.error {
+            background: rgba(244, 67, 54, 0.3);
+        }
+
+        .countdown {
+            font-size: 48px;
+            text-align: center;
+            margin: 20px 0;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+
+        .leaderboard {
+            margin: 20px 0;
+        }
+
+        .leaderboard-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px;
+            margin: 3px 0;
+            background: rgba(255,255,255,0.1);
+            border-radius: 3px;
+        }
+
+        .game-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin: 20px 0;
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: 10px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 5px;
+        }
+
+        .room-code {
+            font-size: 24px;
+            font-weight: bold;
+            text-align: center;
+            padding: 15px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 10px;
+            margin: 20px 0;
+            letter-spacing: 2px;
+        }
+
+        @media (max-width: 768px) {
+            .game-area {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .sidebar {
+                min-width: auto;
+                width: 100%;
+                max-width: 400px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🐍 Snake Battle Multiplayer</h1>
+            <p>Powered by Colyseus Multiplayer Framework</p>
+        </div>
+
+        <div class="game-area">
+            <div>
+                <canvas id="gameCanvas" class="game-canvas" width="800" height="500"></canvas>
+                <div id="gameControls" style="text-align: center; margin-top: 10px;">
+                    <p><strong>Controls:</strong> WASD or Arrow Keys to move | X to shoot | Z for armor</p>
+                </div>
+            </div>
+
+            <div class="sidebar">
+                <!-- Lobby Screen -->
+                <div id="lobbyScreen" class="lobby-screen active">
+                    <h3>Game Lobby</h3>
+                    
+                    <div id="roomCode" class="room-code" style="display: none;">
+                        Room Code: <span id="roomCodeText">------</span>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="playerName">Your Name:</label>
+                        <input type="text" id="playerName" placeholder="Enter your name" maxlength="20">
+                    </div>
+
+                    <div class="controls">
+                        <button id="createRoomBtn" class="btn">Create Room</button>
+                        <button id="quickMatchBtn" class="btn secondary">Quick Match</button>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="joinRoomCode">Join Private Room:</label>
+                        <input type="text" id="joinRoomCode" placeholder="Enter room code" maxlength="6">
+                        <button id="joinPrivateBtn" class="btn secondary">Join</button>
+                    </div>
+
+                    <div id="connectionStatus" class="status info">
+                        Connecting to server...
+                    </div>
+
+                    <div id="playerList" class="player-list" style="display: none;">
+                        <h4>Players in Room:</h4>
+                        <div id="players"></div>
+                    </div>
+
+                    <div id="lobbyControls" class="controls" style="display: none;">
+                        <button id="readyBtn" class="btn">Ready</button>
+                        <button id="startGameBtn" class="btn" style="display: none;">Start Game</button>
+                        <button id="leaveRoomBtn" class="btn danger">Leave Room</button>
+                    </div>
+                </div>
+
+                <!-- Game UI -->
+                <div id="gameUI" class="game-ui">
+                    <h3>Game in Progress</h3>
+                    
+                    <div id="countdown" class="countdown" style="display: none;">5</div>
+                    
+                    <div id="gameStats" class="game-stats">
+                        <div class="stat-item">
+                            <div>Score</div>
+                            <div id="playerScore">0</div>
+                        </div>
+                        <div class="stat-item">
+                            <div>Length</div>
+                            <div id="playerLength">3</div>
+                        </div>
+                        <div class="stat-item">
+                            <div>Shots</div>
+                            <div id="playerShots">0</div>
+                        </div>
+                        <div class="stat-item">
+                            <div>Armor</div>
+                            <div id="playerArmor">0</div>
+                        </div>
+                    </div>
+
+                    <div id="leaderboard" class="leaderboard">
+                        <h4>Leaderboard</h4>
+                        <div id="leaderboardList"></div>
+                    </div>
+
+                    <div id="gameStatus" class="status info">
+                        Game starting...
+                    </div>
+
+                    <div class="controls">
+                        <button id="respawnBtn" class="btn" style="display: none;">Respawn</button>
+                    </div>
+                </div>
+
+                <!-- Results Screen -->
+                <div id="resultsScreen" class="lobby-screen">
+                    <h3>Game Results</h3>
+                    
+                    <div id="winnerAnnouncement" class="status success">
+                        Winner: <span id="winnerName">-</span>
+                    </div>
+
+                    <div id="finalResults" class="leaderboard">
+                        <h4>Final Standings</h4>
+                        <div id="finalResultsList"></div>
+                    </div>
+
+                    <div class="controls">
+                        <button id="rematchBtn" class="btn">Rematch</button>
+                        <button id="backToLobbyBtn" class="btn secondary">Back to Lobby</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Include Colyseus client -->
+    <script src="https://unpkg.com/colyseus.js@^0.15.0/dist/colyseus.js"></script>
+    <!-- Include our SDK -->
+    <script src="/js/multiplayer-sdk.js"></script>
+    <!-- Game logic -->
+    <script src="game.js"></script>
+</body>
+</html>

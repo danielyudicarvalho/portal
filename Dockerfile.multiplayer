@@ -1,0 +1,45 @@
+# Multi-stage build for production multiplayer server
+FROM node:18-alpine AS base
+
+# Install dependencies only when needed
+FROM base AS deps
+RUN apk add --no-cache libc6-compat
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+RUN npm ci --only=production
+
+# Development image
+FROM base AS dev
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+COPY . .
+EXPOSE 3002
+CMD ["npm", "run", "dev:multiplayer"]
+
+# Production image
+FROM base AS runner
+WORKDIR /app
+
+ENV NODE_ENV production
+
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 gameserver
+
+# Copy dependencies
+COPY --from=deps /app/node_modules ./node_modules
+
+# Copy server files
+COPY --chown=gameserver:nodejs server ./server
+COPY --chown=gameserver:nodejs package*.json ./
+
+USER gameserver
+
+EXPOSE 3002
+
+ENV PORT 3002
+ENV HOSTNAME "0.0.0.0"
+
+CMD ["node", "server/multiplayer-server.js"]

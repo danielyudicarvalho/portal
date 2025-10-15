@@ -11,6 +11,7 @@ import {
 } from '@heroicons/react/24/outline';
 import Button from '../ui/Button';
 import Input from '../ui/Input';
+import { useSession, signIn, signOut } from 'next-auth/react';
 
 interface HeaderProps {
   onMobileMenuToggle?: () => void;
@@ -25,6 +26,7 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle, isMobileMenuOpen })
 
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const { data: session, status } = useSession();
 
   const navigation = [
     { name: 'Home', href: '/' },
@@ -41,14 +43,7 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle, isMobileMenuOpen })
           {/* Logo and Mobile Menu Button */}
           <div className="flex items-center">
             <button
-              onClick={(e) => {
-                console.log('🍔 Hamburger menu clicked!', {
-                  event: e,
-                  onMobileMenuToggle: !!onMobileMenuToggle,
-                  mobileMenu: !!mobileMenu
-                });
-                alert('Hamburger menu clicked!');
-
+              onClick={() => {
                 if (onMobileMenuToggle) {
                   onMobileMenuToggle();
                   return;
@@ -117,62 +112,57 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle, isMobileMenuOpen })
               <MagnifyingGlassIcon className="h-5 w-5" />
             </button>
 
-            {/* User Menu - Replace with actual auth logic */}
             <div className="flex items-center space-x-1 sm:space-x-2">
-              {/* Test button */}
-              <div 
-                onClick={() => {
-                  console.log('DIV CLICKED!');
-                  alert('DIV Test button works!');
-                }}
-                onMouseDown={() => console.log('MOUSE DOWN!')}
-                onMouseUp={() => console.log('MOUSE UP!')}
-                className="bg-red-500 text-white px-2 py-1 rounded text-xs cursor-pointer select-none"
-              >
-                TEST DIV
-              </div>
-              <button 
-                onClick={() => {
-                  console.log('BUTTON CLICKED!');
-                  alert('BUTTON Test works!');
-                }}
-                onMouseDown={() => console.log('BUTTON MOUSE DOWN!')}
-                className="bg-blue-500 text-white px-2 py-1 rounded text-xs"
-              >
-                TEST BTN
-              </button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="hidden xs:inline-flex text-xs sm:text-sm px-2 sm:px-3 py-1 sm:py-2 touch-manipulation"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  console.log('🔐 Login button clicked!', e);
-                  alert('Login clicked!');
-                }}
-              >
-                Login
-              </Button>
-              <Button
-                variant="primary"
-                size="sm"
-                className="text-xs sm:text-sm px-2 sm:px-3 py-1 sm:py-2 touch-manipulation"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  console.log('📝 Sign Up button clicked!', e);
-                  alert('Sign Up clicked!');
-                }}
-              >
-                <span className="hidden xs:inline">Sign Up</span>
-                <span className="xs:hidden">Join</span>
-              </Button>
-
-              {/* User Avatar (when logged in) */}
-              {/* <button className="p-1 rounded-full text-gray-300 hover:text-white transition-colors touch-manipulation tap-target">
-                <UserCircleIcon className="h-8 w-8" />
-              </button> */}
+              {status !== 'authenticated' && (
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="hidden xs:inline-flex text-xs sm:text-sm px-2 sm:px-3 py-1 sm:py-2 touch-manipulation"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      // Open NextAuth default sign-in page with available providers (Google, Discord, Email)
+                      signIn();
+                    }}
+                  >
+                    Login
+                  </Button>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    className="text-xs sm:text-sm px-2 sm:px-3 py-1 sm:py-2 touch-manipulation"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      // You can target a specific provider, e.g. signIn('google')
+                      signIn();
+                    }}
+                  >
+                    <span className="hidden xs:inline">Sign Up</span>
+                    <span className="xs:hidden">Join</span>
+                  </Button>
+                </>
+              )}
+              {status === 'authenticated' && (
+                <>
+                  <span className="hidden sm:inline text-gray-300 text-sm mr-1">
+                    {session?.user?.name || session?.user?.email}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-xs sm:text-sm px-2 sm:px-3 py-1 sm:py-2 touch-manipulation"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      signOut({ callbackUrl: '/' });
+                    }}
+                  >
+                    Sign out
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         </div>

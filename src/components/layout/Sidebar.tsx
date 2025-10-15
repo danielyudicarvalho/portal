@@ -15,7 +15,8 @@ import {
   ClockIcon,
   PuzzlePieceIcon,
   CommandLineIcon,
-  NumberedListIcon
+  NumberedListIcon,
+  UsersIcon
 } from '@heroicons/react/24/outline';
 
 interface SidebarProps {
@@ -82,11 +83,12 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen = true, onClose }) => {
       name: 'Puzzle Games',
       href: '/games',
       icon: PuzzlePieceIcon,
-      current: pathname.startsWith('/games/fill-the-holes') || pathname.startsWith('/games/clocks') || pathname.startsWith('/games/123'),
+      current: pathname.startsWith('/games/fill-the-holes') || pathname.startsWith('/games/clocks') || pathname.startsWith('/games/123') || pathname.startsWith('/games/perfect-square'),
       children: [
         { name: 'Fill the Holes', href: '/games/fill-the-holes' },
         { name: 'Clocks', href: '/games/clocks' },
         { name: '123', href: '/games/123' },
+        { name: 'Perfect Square', href: '/games/perfect-square' },
       ]
     },
     {
@@ -99,6 +101,15 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen = true, onClose }) => {
         { name: 'Box Jump', href: '/games/box-jump' },
         { name: 'Boom Dots', href: '/games/boom-dots' },
         { name: 'Doodle Jump', href: '/games/doodle-jump' },
+      ]
+    },
+    {
+      name: 'Multiplayer Games',
+      href: '/games/multiplayer',
+      icon: UsersIcon,
+      current: pathname.startsWith('/games/multiplayer') || pathname.startsWith('/games/the-battle'),
+      children: [
+        { name: 'The Battle', href: '/games/the-battle' },
       ]
     },
     {
@@ -157,6 +168,18 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen = true, onClose }) => {
       href: '/games/doodle-jump',
       icon: CommandLineIcon,
       current: pathname === '/games/doodle-jump'
+    },
+    {
+      name: 'Perfect Square',
+      href: '/games/perfect-square',
+      icon: PuzzlePieceIcon,
+      current: pathname === '/games/perfect-square'
+    },
+    {
+      name: 'The Battle',
+      href: '/games/the-battle',
+      icon: UsersIcon,
+      current: pathname === '/games/the-battle'
     },
     {
       name: 'Popular',

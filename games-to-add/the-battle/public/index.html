@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Battle - Multiplayer Tank Game</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #2c3e50;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: Arial, sans-serif;
+        }
+        
+        #game-container {
+            border: 3px solid #34495e;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
+        
+        #ui {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            font-size: 16px;
+            z-index: 100;
+        }
+        
+        #health-bar {
+            width: 200px;
+            height: 20px;
+            background: #e74c3c;
+            border: 2px solid #fff;
+            margin-top: 5px;
+        }
+        
+        #health-fill {
+            height: 100%;
+            background: #27ae60;
+            transition: width 0.3s;
+        }
+        
+        #game-over {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            display: none;
+            z-index: 200;
+        }
+        
+        #restart-btn {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        
+        #restart-btn:hover {
+            background: #2980b9;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <div id="ui">
+            <div>Health: <span id="health-text">100</span></div>
+            <div id="health-bar">
+                <div id="health-fill" style="width: 100%"></div>
+            </div>
+            <div>Alive Players: <span id="player-count">1</span></div>
+            <div id="status-text" style="margin-top: 10px; font-weight: bold; font-size: 14px;"></div>
+        </div>
+        
+        <div id="game-over">
+            <h2 id="game-over-text">Game Over</h2>
+            <button id="restart-btn" onclick="location.reload()">Play Again</button>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.70.0/dist/phaser.min.js"></script>
+    <script src="js/game.js"></script>
+</body>
+</html>
