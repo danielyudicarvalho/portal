@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui';
 import { 
   GiftIcon, 
@@ -27,6 +27,12 @@ interface PromotionalBannersProps {
 }
 
 const PromotionalBanners: React.FC<PromotionalBannersProps> = ({ banners }) => {
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
   const defaultBanners: PromotionalBanner[] = [
     {
       id: 'welcome-bonus',
@@ -136,7 +142,7 @@ const PromotionalBanners: React.FC<PromotionalBannersProps> = ({ banners }) => {
                 {/* Expiry Timer */}
                 {banner.expiresAt && (
                   <div className="mb-4 text-xs text-white/70 bg-white/10 backdrop-blur-sm rounded-full px-3 py-1 inline-block">
-                    ⏰ {formatTimeRemaining(banner.expiresAt)}
+                    ⏰ {isClient ? formatTimeRemaining(banner.expiresAt) : 'Loading...'}
                   </div>
                 )}
 

@@ -40,8 +40,13 @@ It’s a social platform for hyper-casual multiplayer games, where players can c
 
 3. **Set up the database**:
    ```bash
-   npx prisma migrate dev
-   npx prisma generate
+   # Option 1: Quick setup with Docker (recommended)
+   npm run db:init
+   
+   # Option 2: Manual setup
+   npm run db:up          # Start PostgreSQL and Redis
+   npm run db:generate    # Generate Prisma client
+   npm run db:migrate     # Run database migrations
    ```
 
 4. **Run the development server**:

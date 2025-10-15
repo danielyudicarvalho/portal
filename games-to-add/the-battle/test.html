@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Tank Battle Test</title>
+    <style>
+        body { margin: 0; padding: 20px; background: #2c3e50; color: white; }
+        #game { border: 2px solid white; }
+    </style>
+</head>
+<body>
+    <h2>Tank Battle Game Test</h2>
+    <div id="status">Loading...</div>
+    <div id="game"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.70.0/dist/phaser.min.js"></script>
+    <script>
+        class TestScene extends Phaser.Scene {
+            constructor() {
+                super({ key: 'TestScene' });
+                this.tanks = [];
+            }
+
+            create() {
+                console.log('Test scene created');
+                document.getElementById('status').textContent = 'Game loaded! Use WASD to move, SPACE to shoot';
+                
+                // Create background
+                this.add.rectangle(400, 300, 800, 600, 0x34495e);
+                
+                // Create a test tank
+                this.createTank(400, 300, 0x00ff00);
+                this.createTank(200, 200, 0xff0000);
+                this.createTank(600, 400, 0x0000ff);
+                
+                // Add controls
+                this.cursors = this.input.keyboard.createCursorKeys();
+                this.wasd = this.input.keyboard.addKeys('W,S,A,D,SPACE');
+                
+                // Instructions
+                this.add.text(400, 50, 'Tank Battle Test - Multiple tanks should be visible', {
+                    fontSize: '16px',
+                    fill: '#ffffff'
+                }).setOrigin(0.5);
+            }
+
+            createTank(x, y, color) {
+                // Tank body
+                const body = this.add.rectangle(0, 0, 40, 30, color);
+                body.setStrokeStyle(2, 0x000000);
+                
+                // Tank barrel
+                const barrel = this.add.rectangle(0, -15, 4, 20, 0x000000);
+                barrel.setOrigin(0.5, 1);
+                
+                // Tank container
+                const tank = this.add.container(x, y, [body, barrel]);
+                this.tanks.push(tank);
+                
+                return tank;
+            }
+
+            update() {
+                if (this.tanks.length > 0) {
+                    const tank = this.tanks[0]; // Control first tank
+                    
+                    if (this.wasd.A.isDown) {
+                        tank.rotation -= 0.05;
+                    }
+                    if (this.wasd.D.isDown) {
+                        tank.rotation += 0.05;
+                    }
+                    if (this.wasd.W.isDown) {
+                        tank.x += Math.cos(tank.rotation - Math.PI/2) * 3;
+                        tank.y += Math.sin(tank.rotation - Math.PI/2) * 3;
+                    }
+                    if (this.wasd.S.isDown) {
+                        tank.x -= Math.cos(tank.rotation - Math.PI/2) * 3;
+                        tank.y -= Math.sin(tank.rotation - Math.PI/2) * 3;
+                    }
+                    
+                    // Keep in bounds
+                    tank.x = Phaser.Math.Clamp(tank.x, 20, 780);
+                    tank.y = Phaser.Math.Clamp(tank.y, 20, 580);
+                }
+            }
+        }
+
+        const config = {
+            type: Phaser.AUTO,
+            width: 800,
+            height: 600,
+            parent: 'game',
+            backgroundColor: '#34495e',
+            scene: TestScene
+        };
+
+        const game = new Phaser.Game(config);
+    </script>
+</body>
+</html>

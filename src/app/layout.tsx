@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
-import { PWAProvider } from '@/components/providers'
+import { PWAProvider, AuthProvider } from '@/components/providers'
 import { OfflineIndicator } from '@/components/ui'
 import './globals.css'
 
@@ -143,10 +143,12 @@ export default function RootLayout({
         <link rel="apple-touch-startup-image" href="/icons/splash-640x1136.png" media="(device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" />
       </head>
       <body className={inter.className}>
-        <PWAProvider>
-          {children}
-          <OfflineIndicator />
-        </PWAProvider>
+        <AuthProvider>
+          <PWAProvider>
+            {children}
+            <OfflineIndicator />
+          </PWAProvider>
+        </AuthProvider>
       </body>
     </html>
   )

@@ -5,7 +5,7 @@ import Image from 'next/image';
 import GameGrid from './GameGrid';
 import { Button } from '@/components/ui';
 import { Game, GameCategory as GameCategoryType } from '@/types';
-import { 
+import {
   ChevronRightIcon,
   EyeIcon,
   PlayIcon
@@ -37,7 +37,7 @@ const GameCategory: React.FC<GameCategoryProps> = ({
   error
 }) => {
   const [showAll, setShowAll] = useState(false);
-  
+
   const games = category.games || [];
   const displayedGames = showAll ? games : games.slice(0, maxGamesShown);
   const hasMoreGames = games.length > maxGamesShown;
@@ -52,17 +52,30 @@ const GameCategory: React.FC<GameCategoryProps> = ({
 
   const renderCategoryIcon = () => {
     if (category.icon) {
-      return (
-        <Image 
-          src={category.icon} 
-          alt={category.name}
-          width={24}
-          height={24}
-          className="h-6 w-6"
-        />
-      );
+      // Check if it's an emoji or URL by checking if it starts with http/https or /
+      const isUrl = category.icon.startsWith('http') || category.icon.startsWith('/');
+
+      if (!isUrl) {
+        // It's an emoji, render as text
+        return (
+          <span className="text-2xl" role="img" aria-label={category.name}>
+            {category.icon}
+          </span>
+        );
+      } else {
+        // It's a URL, render as image
+        return (
+          <Image
+            src={category.icon}
+            alt={category.name}
+            width={24}
+            height={24}
+            className="h-6 w-6"
+          />
+        );
+      }
     }
-    
+
     // Default icon based on category name
     return <PlayIcon className="h-6 w-6" />;
   };
@@ -79,7 +92,7 @@ const GameCategory: React.FC<GameCategoryProps> = ({
             </div>
             <div className="h-10 w-32 bg-gray-700 rounded animate-pulse"></div>
           </div>
-          
+
           {/* Games Grid Skeleton */}
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {Array.from({ length: maxGamesShown }, (_, i) => (
@@ -137,7 +150,7 @@ const GameCategory: React.FC<GameCategoryProps> = ({
               </div>
             </div>
           </div>
-          
+
           {/* Empty State */}
           <div className="text-center py-12">
             <div className="max-w-md mx-auto">
@@ -175,11 +188,11 @@ const GameCategory: React.FC<GameCategoryProps> = ({
               )}
             </div>
           </div>
-          
+
           {/* View All Button */}
           {showViewAll && hasMoreGames && !showAll && (
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               size="lg"
               onClick={handleViewAllClick}
               className="group self-start md:self-auto"
@@ -209,7 +222,7 @@ const GameCategory: React.FC<GameCategoryProps> = ({
           <div className="overflow-x-auto">
             <div className="flex space-x-6 pb-4">
               {displayedGames.map((game, index) => (
-                <div 
+                <div
                   key={game.id}
                   className="flex-shrink-0 w-64"
                   style={{ animationDelay: `${index * 0.1}s` }}
@@ -218,8 +231,8 @@ const GameCategory: React.FC<GameCategoryProps> = ({
                   <div className="bg-gaming-dark border border-gaming-accent/20 rounded-lg overflow-hidden hover:border-gaming-accent/40 transition-colors cursor-pointer">
                     <div className="aspect-video bg-gradient-to-br from-gaming-accent/20 to-gaming-secondary/20">
                       {game.thumbnail ? (
-                        <Image 
-                          src={game.thumbnail} 
+                        <Image
+                          src={game.thumbnail}
                           alt={game.title}
                           width={256}
                           height={144}
@@ -249,8 +262,8 @@ const GameCategory: React.FC<GameCategoryProps> = ({
         {/* Show More Button (for expanded view) */}
         {showAll && hasMoreGames && (
           <div className="text-center mt-8">
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => setShowAll(false)}
             >
               Show Less
