@@ -11,7 +11,7 @@ import {
 } from '@heroicons/react/24/outline';
 import Button from '../ui/Button';
 import Input from '../ui/Input';
-import { signIn, signOut, useSession } from 'next-auth/react';
+import { useSession, signIn, signOut } from 'next-auth/react';
 
 interface HeaderProps {
   onMobileMenuToggle?: () => void;
@@ -27,7 +27,6 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle, isMobileMenuOpen })
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const { data: session, status } = useSession();
-  const isAuthenticated = status === 'authenticated';
 
   const navigation = [
     { name: 'Home', href: '/' },
@@ -113,9 +112,8 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle, isMobileMenuOpen })
               <MagnifyingGlassIcon className="h-5 w-5" />
             </button>
 
-            {/* User Menu */}
             <div className="flex items-center space-x-1 sm:space-x-2">
-              {!isAuthenticated && (
+              {status !== 'authenticated' && (
                 <>
                   <Button
                     variant="outline"
@@ -124,9 +122,8 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle, isMobileMenuOpen })
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      // Use NextAuth default page or go straight to GitHub
-                      // signIn();
-                      signIn('github');
+                      // Open NextAuth default sign-in page with available providers (Google, Discord, Email)
+                      signIn();
                     }}
                   >
                     Login
@@ -138,8 +135,8 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle, isMobileMenuOpen })
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      // Same flow for sign up via OAuth provider
-                      signIn('github');
+                      // You can target a specific provider, e.g. signIn('google')
+                      signIn();
                     }}
                   >
                     <span className="hidden xs:inline">Sign Up</span>
@@ -147,20 +144,11 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle, isMobileMenuOpen })
                   </Button>
                 </>
               )}
-
-              {isAuthenticated && (
+              {status === 'authenticated' && (
                 <>
-                  {session?.user?.image ? (
-                    <img
-                      src={session.user.image}
-                      alt={session.user.name || 'User'}
-                      className="h-8 w-8 rounded-full ring-1 ring-gaming-accent/30"
-                    />
-                  ) : (
-                    <div className="h-8 w-8 rounded-full bg-gaming-accent/30 flex items-center justify-center text-white text-xs font-semibold">
-                      {(session?.user?.name || 'U').slice(0, 1)}
-                    </div>
-                  )}
+                  <span className="hidden sm:inline text-gray-300 text-sm mr-1">
+                    {session?.user?.name || session?.user?.email}
+                  </span>
                   <Button
                     variant="outline"
                     size="sm"
@@ -168,10 +156,10 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle, isMobileMenuOpen })
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      signOut();
+                      signOut({ callbackUrl: '/' });
                     }}
                   >
-                    Logout
+                    Sign out
                   </Button>
                 </>
               )}

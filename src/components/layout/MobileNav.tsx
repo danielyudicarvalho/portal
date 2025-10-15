@@ -4,6 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { clsx } from 'clsx';
+import { useSession, signIn, signOut } from 'next-auth/react';
 import {
   HomeIcon,
   PlayIcon,
@@ -310,20 +311,7 @@ const MobileNav: React.FC<MobileNavProps> = ({
             </Link>
 
             {/* Auth Buttons */}
-            <div className="space-y-3">
-              <button
-                onClick={handleLinkClick}
-                className="w-full px-4 py-3 text-sm font-medium text-gaming-accent border border-gaming-accent rounded-lg hover:bg-gaming-accent hover:text-white active:bg-gaming-accent/90 transition-colors tap-target touch-manipulation"
-              >
-                Login
-              </button>
-              <button
-                onClick={handleLinkClick}
-                className="w-full px-4 py-3 text-sm font-medium text-white bg-gaming-accent hover:bg-gaming-accent/90 active:bg-gaming-accent/80 rounded-lg transition-colors tap-target touch-manipulation"
-              >
-                Sign Up
-              </button>
-            </div>
+            <AuthButtons onClose={onClose} />
 
             {/* Promotional Banner */}
             <div className="mt-4 bg-gradient-to-r from-gaming-accent/20 to-gaming-secondary/20 rounded-lg p-3">
@@ -346,6 +334,75 @@ const MobileNav: React.FC<MobileNavProps> = ({
         </>
       )}
     </>
+  );
+};
+
+// Auth Buttons Component
+const AuthButtons: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+  const { data: session, status } = useSession();
+
+  if (status === 'loading') {
+    return (
+      <div className="space-y-3">
+        <div className="w-full px-4 py-3 bg-gaming-dark/50 rounded-lg animate-pulse">
+          <div className="h-4 bg-gaming-accent/20 rounded"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (session) {
+    return (
+      <div className="space-y-3">
+        <div className="flex items-center space-x-3 p-3 bg-gaming-accent/10 rounded-lg border border-gaming-accent/20">
+          <div className="w-8 h-8 bg-gaming-accent rounded-full flex items-center justify-center">
+            <span className="text-white text-sm font-medium">
+              {session.user?.name?.charAt(0) || session.user?.email?.charAt(0) || 'U'}
+            </span>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-white text-sm font-medium truncate">
+              {session.user?.name || 'User'}
+            </p>
+            <p className="text-gaming-secondary/80 text-xs truncate">
+              {session.user?.email}
+            </p>
+          </div>
+        </div>
+        <button
+          onClick={() => {
+            signOut();
+            onClose();
+          }}
+          className="w-full px-4 py-3 text-sm font-medium text-gaming-danger border border-gaming-danger/50 rounded-lg hover:bg-gaming-danger hover:text-white active:bg-gaming-danger/90 transition-colors tap-target touch-manipulation"
+        >
+          Sign Out
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      <button
+        onClick={() => {
+          signIn();
+          onClose();
+        }}
+        className="w-full px-4 py-3 text-sm font-medium text-gaming-accent border border-gaming-accent rounded-lg hover:bg-gaming-accent hover:text-white active:bg-gaming-accent/90 transition-colors tap-target touch-manipulation"
+      >
+        Login
+      </button>
+      <button
+        onClick={() => {
+          signIn();
+          onClose();
+        }}
+        className="w-full px-4 py-3 text-sm font-medium text-white bg-gaming-accent hover:bg-gaming-accent/90 active:bg-gaming-accent/80 rounded-lg transition-colors tap-target touch-manipulation"
+      >
+        Sign Up
+      </button>
+    </div>
   );
 };
 
