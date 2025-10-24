@@ -24,6 +24,9 @@ class ActiveRoom extends Schema {
     this.state = 'LOBBY';
     this.isPrivate = false;
     this.createdAt = Date.now();
+    this.phaseStartedAt = 0;
+    this.phaseEndsAt = 0;
+    this.countdown = 0;
   }
 }
 
@@ -52,6 +55,9 @@ type('number')(ActiveRoom.prototype, 'maxPlayers');
 type('string')(ActiveRoom.prototype, 'state');
 type('boolean')(ActiveRoom.prototype, 'isPrivate');
 type('number')(ActiveRoom.prototype, 'createdAt');
+type('number')(ActiveRoom.prototype, 'phaseStartedAt');
+type('number')(ActiveRoom.prototype, 'phaseEndsAt');
+type('number')(ActiveRoom.prototype, 'countdown');
 
 type({ map: GameInfo })(LobbyState.prototype, 'availableGames');
 type({ map: ActiveRoom })(LobbyState.prototype, 'activeRooms');
@@ -531,6 +537,15 @@ class GameLobby extends Room {
               trackedRoom.roomCode = room.metadata.roomCode || trackedRoom.roomCode;
               trackedRoom.state = room.metadata.state || 'LOBBY';
               trackedRoom.gameId = room.metadata.gameId || trackedRoom.gameId;
+              if (typeof room.metadata.phaseStartedAt === 'number') {
+                trackedRoom.phaseStartedAt = room.metadata.phaseStartedAt;
+              }
+              if (typeof room.metadata.phaseEndsAt === 'number') {
+                trackedRoom.phaseEndsAt = room.metadata.phaseEndsAt;
+              }
+              if (typeof room.metadata.countdown === 'number') {
+                trackedRoom.countdown = room.metadata.countdown;
+              }
             }
             
             // Check for capacity issues (Requirement 3.5)
@@ -666,7 +681,8 @@ class GameLobby extends Room {
         LOBBY: filteredRooms.filter(room => room.state === 'LOBBY').length,
         COUNTDOWN: filteredRooms.filter(room => room.state === 'COUNTDOWN').length,
         PLAYING: filteredRooms.filter(room => room.state === 'PLAYING').length,
-        RESULTS: filteredRooms.filter(room => room.state === 'RESULTS').length
+        RESULTS: filteredRooms.filter(room => room.state === 'RESULTS').length,
+        RESET: filteredRooms.filter(room => room.state === 'RESET').length
       },
       capacityStats: {
         fullRooms: filteredRooms.filter(room => room.playerCount >= room.maxPlayers).length,
@@ -694,7 +710,8 @@ class GameLobby extends Room {
           LOBBY: gameRooms.filter(room => room.state === 'LOBBY').length,
           COUNTDOWN: gameRooms.filter(room => room.state === 'COUNTDOWN').length,
           PLAYING: gameRooms.filter(room => room.state === 'PLAYING').length,
-          RESULTS: gameRooms.filter(room => room.state === 'RESULTS').length
+          RESULTS: gameRooms.filter(room => room.state === 'RESULTS').length,
+          RESET: gameRooms.filter(room => room.state === 'RESET').length
         }
       };
     });
@@ -709,7 +726,19 @@ class GameLobby extends Room {
     if (trackedRoom) {
       const oldState = trackedRoom.state;
       trackedRoom.state = newState;
-      
+      if (typeof additionalData.playerCount === 'number') {
+        trackedRoom.playerCount = additionalData.playerCount;
+      }
+      if (typeof additionalData.phaseStartedAt === 'number') {
+        trackedRoom.phaseStartedAt = additionalData.phaseStartedAt;
+      }
+      if (typeof additionalData.phaseEndsAt === 'number') {
+        trackedRoom.phaseEndsAt = additionalData.phaseEndsAt;
+      }
+      if (typeof additionalData.countdown === 'number') {
+        trackedRoom.countdown = additionalData.countdown;
+      }
+
       // Broadcast state change to all lobby clients
       this.broadcast('room_state_changed', {
         roomId,

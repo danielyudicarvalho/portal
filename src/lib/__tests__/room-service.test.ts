@@ -504,7 +504,8 @@ describe('RoomService', () => {
           LOBBY: 2,
           COUNTDOWN: 0,
           PLAYING: 1,
-          RESULTS: 1
+          RESULTS: 1,
+          RESET: 0
         }
       });
     });
@@ -522,7 +523,8 @@ describe('RoomService', () => {
           LOBBY: 0,
           COUNTDOWN: 0,
           PLAYING: 0,
-          RESULTS: 0
+          RESULTS: 0,
+          RESET: 0
         }
       });
     });

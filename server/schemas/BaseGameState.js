@@ -43,6 +43,10 @@ class BaseGameState extends Schema {
     this.isPrivate = false;
     this.afkTimeout = 60000; // 60 seconds
     this.reconnectTimeout = 30000; // 30 seconds
+    this.phaseStartedAt = Date.now();
+    this.phaseEndsAt = 0;
+    this.createdAt = Date.now();
+    this.lastUpdate = Date.now();
   }
 
   // Helper methods
@@ -113,5 +117,9 @@ type('string')(BaseGameState.prototype, 'settings');
 type('boolean')(BaseGameState.prototype, 'isPrivate');
 type('number')(BaseGameState.prototype, 'afkTimeout');
 type('number')(BaseGameState.prototype, 'reconnectTimeout');
+type('number')(BaseGameState.prototype, 'phaseStartedAt');
+type('number')(BaseGameState.prototype, 'phaseEndsAt');
+type('number')(BaseGameState.prototype, 'createdAt');
+type('number')(BaseGameState.prototype, 'lastUpdate');
 
 module.exports = { BaseGameState, Player, GameResult };

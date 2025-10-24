@@ -119,7 +119,8 @@ describe('RoomsList', () => {
       LOBBY: 2,
       COUNTDOWN: 0,
       PLAYING: 1,
-      RESULTS: 0
+      RESULTS: 0,
+      RESET: 0
     }
   };
 
@@ -157,8 +158,11 @@ describe('RoomsList', () => {
 
     expect(screen.getByText('3')).toBeInTheDocument(); // Total rooms
     expect(screen.getByText('17')).toBeInTheDocument(); // Total players
-    expect(screen.getByText('2')).toBeInTheDocument(); // Lobby rooms
-    expect(screen.getByText('1')).toBeInTheDocument(); // Playing rooms
+    expect(screen.getByText('Waiting')).toBeInTheDocument();
+    expect(screen.getByText('Starting')).toBeInTheDocument();
+    expect(screen.getByText('Playing')).toBeInTheDocument();
+    expect(screen.getByText('Results')).toBeInTheDocument();
+    expect(screen.getByText('Resetting')).toBeInTheDocument();
   });
 
   it('shows loading skeleton when loading', () => {

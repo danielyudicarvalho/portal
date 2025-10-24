@@ -103,7 +103,8 @@ describe('RoomProvider and Context', () => {
       LOBBY: 1,
       COUNTDOWN: 0,
       PLAYING: 0,
-      RESULTS: 0
+      RESULTS: 0,
+      RESET: 0
     }
   };
 
