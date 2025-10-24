@@ -40,7 +40,8 @@ jest.mock('@heroicons/react/24/solid', () => ({
   ClockIcon: () => <div data-testid="clock-icon" />,
   TrophyIcon: () => <div data-testid="trophy-icon" />,
   EyeIcon: () => <div data-testid="eye-icon" />,
-  SignalIcon: () => <div data-testid="signal-icon" />
+  SignalIcon: () => <div data-testid="signal-icon" />,
+  ArrowPathIcon: () => <div data-testid="arrowpath-icon" />
 }));
 
 describe('RoomCard', () => {
@@ -397,7 +398,8 @@ describe('RoomCard', () => {
       { state: 'LOBBY', expectedText: 'Waiting', expectedIcon: 'clock-icon' },
       { state: 'COUNTDOWN', expectedText: 'Starting', expectedIcon: 'play-icon' },
       { state: 'PLAYING', expectedText: 'In Game', expectedIcon: 'play-icon' },
-      { state: 'RESULTS', expectedText: 'Finishing', expectedIcon: 'trophy-icon' }
+      { state: 'RESULTS', expectedText: 'Results', expectedIcon: 'trophy-icon' },
+      { state: 'RESET', expectedText: 'Resetting', expectedIcon: 'arrowpath-icon' }
     ];
 
     states.forEach(({ state, expectedText, expectedIcon }) => {

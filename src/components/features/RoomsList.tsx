@@ -92,8 +92,11 @@ const RoomsList: React.FC<RoomsListProps> = memo(({
         filtered = filtered.filter(room => room.state === 'LOBBY');
         break;
       case 'playing':
-        filtered = filtered.filter(room => 
-          room.state === 'PLAYING' || room.state === 'COUNTDOWN'
+        filtered = filtered.filter(room =>
+          room.state === 'PLAYING' ||
+          room.state === 'COUNTDOWN' ||
+          room.state === 'RESULTS' ||
+          room.state === 'RESET'
         );
         break;
       default:
@@ -113,7 +116,13 @@ const RoomsList: React.FC<RoomsListProps> = memo(({
         case 'players-desc':
           return b.playerCount - a.playerCount;
         case 'state':
-          const stateOrder = { 'LOBBY': 0, 'COUNTDOWN': 1, 'PLAYING': 2, 'RESULTS': 3 };
+          const stateOrder: Record<ActiveRoom['state'], number> = {
+            LOBBY: 0,
+            COUNTDOWN: 1,
+            PLAYING: 2,
+            RESULTS: 3,
+            RESET: 4
+          };
           return stateOrder[a.state] - stateOrder[b.state];
         default:
           return 0;
@@ -133,8 +142,11 @@ const RoomsList: React.FC<RoomsListProps> = memo(({
         room.state === 'LOBBY' && room.playerCount < room.maxPlayers
       ).length,
       lobby: rooms.filter(room => room.state === 'LOBBY').length,
-      playing: rooms.filter(room => 
-        room.state === 'PLAYING' || room.state === 'COUNTDOWN'
+      playing: rooms.filter(room =>
+        room.state === 'PLAYING' ||
+        room.state === 'COUNTDOWN' ||
+        room.state === 'RESULTS' ||
+        room.state === 'RESET'
       ).length
     };
   }, [rooms]);
@@ -284,7 +296,7 @@ const RoomsList: React.FC<RoomsListProps> = memo(({
               <span className="hidden sm:inline">Updated {new Date(lastUpdateTime).toLocaleTimeString()}</span>
             </div>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 text-center">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3 sm:gap-4 text-center">
             <div>
               <p className="text-xl sm:text-2xl font-bold text-gaming-accent">{statistics.totalRooms}</p>
               <p className="text-xs text-gray-400">
@@ -302,8 +314,20 @@ const RoomsList: React.FC<RoomsListProps> = memo(({
               <p className="text-xs text-gray-400">Waiting</p>
             </div>
             <div>
+              <p className="text-xl sm:text-2xl font-bold text-yellow-300">{statistics.roomsByState.COUNTDOWN}</p>
+              <p className="text-xs text-gray-400">Starting</p>
+            </div>
+            <div>
               <p className="text-xl sm:text-2xl font-bold text-purple-400">{statistics.roomsByState.PLAYING}</p>
               <p className="text-xs text-gray-400">Playing</p>
+            </div>
+            <div>
+              <p className="text-xl sm:text-2xl font-bold text-amber-400">{statistics.roomsByState.RESULTS}</p>
+              <p className="text-xs text-gray-400">Results</p>
+            </div>
+            <div>
+              <p className="text-xl sm:text-2xl font-bold text-orange-400">{statistics.roomsByState.RESET ?? 0}</p>
+              <p className="text-xs text-gray-400">Resetting</p>
             </div>
           </div>
         </div>

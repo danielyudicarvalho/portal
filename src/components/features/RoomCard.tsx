@@ -3,14 +3,15 @@
 import React, { useState, useEffect, memo, useMemo, useCallback } from 'react';
 import { Button } from '@/components/ui';
 import { CardContent } from '@/components/ui';
-import { 
+import {
   UserGroupIcon,
   LockClosedIcon,
   PlayIcon,
   ClockIcon,
   TrophyIcon,
   EyeIcon,
-  SignalIcon
+  SignalIcon,
+  ArrowPathIcon
 } from '@heroicons/react/24/solid';
 import { ActiveRoom, GameInfo } from '@/lib/room-service';
 import { ButtonLoading } from './LoadingStates';
@@ -34,6 +35,7 @@ const RoomCard: React.FC<RoomCardProps> = memo(({
   const [isUpdated, setIsUpdated] = useState(false);
   const [prevPlayerCount, setPrevPlayerCount] = useState(room.playerCount);
   const [prevState, setPrevState] = useState(room.state);
+  const [phaseRemaining, setPhaseRemaining] = useState<number | null>(null);
 
   // Detect real-time updates and show visual feedback (debounced)
   useEffect(() => {
@@ -66,6 +68,27 @@ const RoomCard: React.FC<RoomCardProps> = memo(({
 
   const { capacityPercentage, isRoomFull, isRoomJoinable } = roomMetrics;
 
+  useEffect(() => {
+    if (typeof room.phaseEndsAt !== 'number' || room.phaseEndsAt <= Date.now()) {
+      if (room.state === 'COUNTDOWN' && typeof room.countdown === 'number') {
+        setPhaseRemaining(room.countdown);
+      } else {
+        setPhaseRemaining(null);
+      }
+      return;
+    }
+
+    const updateRemaining = () => {
+      const target = room.phaseEndsAt as number;
+      const remaining = Math.max(0, Math.ceil((target - Date.now()) / 1000));
+      setPhaseRemaining(remaining > 0 ? remaining : 0);
+    };
+
+    updateRemaining();
+    const interval = setInterval(updateRemaining, 1000);
+    return () => clearInterval(interval);
+  }, [room.phaseEndsAt, room.state, room.countdown, room.roomId]);
+
   // Memoize room state display info
   const stateInfo = useMemo(() => {
     switch (room.state) {
@@ -92,10 +115,17 @@ const RoomCard: React.FC<RoomCardProps> = memo(({
         };
       case 'RESULTS':
         return {
-          label: 'Finishing',
+          label: 'Results',
           color: 'text-purple-400',
           bgColor: 'bg-purple-400/10',
           icon: TrophyIcon
+        };
+      case 'RESET':
+        return {
+          label: 'Resetting',
+          color: 'text-orange-300',
+          bgColor: 'bg-orange-300/10',
+          icon: ArrowPathIcon
         };
       default:
         return {
@@ -108,6 +138,21 @@ const RoomCard: React.FC<RoomCardProps> = memo(({
   }, [room.state]);
 
   const StateIcon = stateInfo.icon;
+
+  const phaseLabel = useMemo(() => {
+    if (phaseRemaining === null || phaseRemaining <= 0) return null;
+
+    switch (room.state) {
+      case 'COUNTDOWN':
+        return `${phaseRemaining}s`;
+      case 'RESULTS':
+        return `${phaseRemaining}s to lobby`;
+      case 'RESET':
+        return `${phaseRemaining}s`;
+      default:
+        return null;
+    }
+  }, [phaseRemaining, room.state]);
 
   // Memoize formatted room age
   const roomAge = useMemo(() => {
@@ -177,7 +222,7 @@ const RoomCard: React.FC<RoomCardProps> = memo(({
           </div>
 
           {/* Room State Badge */}
-          <div 
+          <div
             className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium flex-shrink-0 ${stateInfo.color} ${stateInfo.bgColor} ${
               isUpdated ? 'animate-pulse' : ''
             }`}
@@ -186,9 +231,14 @@ const RoomCard: React.FC<RoomCardProps> = memo(({
           >
             <StateIcon className="h-3 w-3" aria-hidden="true" />
             <span className="hidden xs:inline">{stateInfo.label}</span>
+            {phaseLabel && (
+              <span className="text-[10px] leading-none text-gray-300/90">
+                {phaseLabel}
+              </span>
+            )}
             {isUpdated && (
-              <SignalIcon 
-                className="h-3 w-3 animate-bounce text-gaming-accent" 
+              <SignalIcon
+                className="h-3 w-3 animate-bounce text-gaming-accent"
                 aria-label="Room updated"
               />
             )}

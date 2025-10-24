@@ -102,7 +102,7 @@ export type RoomAction =
   | { type: 'SET_CONNECTED'; payload: boolean }
   | { type: 'SET_ROOMS'; payload: { rooms: ActiveRoom[]; statistics: RoomStatistics } }
   | { type: 'SET_SELECTED_GAME'; payload: { gameId: string; gameInfo: GameInfo } }
-  | { type: 'ROOM_STATE_CHANGED'; payload: { roomId: string; newState: string } }
+  | { type: 'ROOM_STATE_CHANGED'; payload: { roomId: string; newState: ActiveRoom['state']; metadata?: Partial<ActiveRoom> } }
   | { type: 'ROOM_CREATED'; payload: { roomId: string; roomCode: string; isPrivate: boolean; maxPlayers: number } }
   | { type: 'ROOM_JOINED'; payload: { roomId: string } }
   | { type: 'ROOM_DISPOSED'; payload: { roomId: string } }
@@ -184,9 +184,13 @@ function roomReducer(state: RoomState, action: RoomAction): RoomState {
     case 'ROOM_STATE_CHANGED':
       return {
         ...state,
-        rooms: state.rooms.map(room => 
-          room.roomId === action.payload.roomId 
-            ? { ...room, state: action.payload.newState as ActiveRoom['state'] }
+        rooms: state.rooms.map(room =>
+          room.roomId === action.payload.roomId
+            ? {
+                ...room,
+                state: action.payload.newState,
+                ...(action.payload.metadata ? action.payload.metadata : {})
+              }
             : room
         ),
         lastUpdate: Date.now()
@@ -296,7 +300,7 @@ export function RoomProvider({ children, serverUrl }: RoomProviderProps) {
   const updateBatchRef = useRef<{
     rooms?: ActiveRoom[];
     statistics?: RoomStatistics;
-    stateChanges?: Array<{ roomId: string; newState: string }>;
+    stateChanges?: Array<{ roomId: string; newState: ActiveRoom['state']; metadata?: Partial<ActiveRoom> }>;
     timeout?: NodeJS.Timeout;
   }>({});
 
@@ -306,22 +310,22 @@ export function RoomProvider({ children, serverUrl }: RoomProviderProps) {
   }, 100);
 
   // Throttled state changes to batch rapid updates
-  const throttledStateChange = useThrottle((roomId: string, newState: string) => {
-    dispatch({ type: 'ROOM_STATE_CHANGED', payload: { roomId, newState } });
-  }, 200);
-
   // Batch multiple room state changes
-  const batchStateChanges = useCallback((roomId: string, newState: string) => {
+  const batchStateChanges = useCallback((roomId: string, newState: ActiveRoom['state'], metadata: Partial<ActiveRoom> = {}) => {
     if (!updateBatchRef.current.stateChanges) {
       updateBatchRef.current.stateChanges = [];
     }
-    
+
     // Update or add the state change
     const existingIndex = updateBatchRef.current.stateChanges.findIndex(change => change.roomId === roomId);
     if (existingIndex >= 0) {
       updateBatchRef.current.stateChanges[existingIndex].newState = newState;
+      updateBatchRef.current.stateChanges[existingIndex].metadata = {
+        ...(updateBatchRef.current.stateChanges[existingIndex].metadata || {}),
+        ...metadata
+      };
     } else {
-      updateBatchRef.current.stateChanges.push({ roomId, newState });
+      updateBatchRef.current.stateChanges.push({ roomId, newState, metadata });
     }
     
     // Clear existing timeout
@@ -332,8 +336,8 @@ export function RoomProvider({ children, serverUrl }: RoomProviderProps) {
     // Set new timeout to process batch
     updateBatchRef.current.timeout = setTimeout(() => {
       if (updateBatchRef.current.stateChanges) {
-        updateBatchRef.current.stateChanges.forEach(({ roomId, newState }) => {
-          dispatch({ type: 'ROOM_STATE_CHANGED', payload: { roomId, newState } });
+        updateBatchRef.current.stateChanges.forEach(({ roomId, newState, metadata }) => {
+          dispatch({ type: 'ROOM_STATE_CHANGED', payload: { roomId, newState, metadata } });
         });
         updateBatchRef.current.stateChanges = [];
       }
@@ -364,12 +368,18 @@ export function RoomProvider({ children, serverUrl }: RoomProviderProps) {
       debouncedRoomUpdate(rooms, statistics);
     };
 
-    const handleRoomStateChanged = ({ roomId, newState }: { roomId: string; newState: string }) => {
+    const handleRoomStateChanged = (data: { roomId: string; newState: ActiveRoom['state']; [key: string]: any }) => {
+      const { roomId, newState, playerCount, phaseStartedAt, phaseEndsAt, countdown } = data;
       // Track message performance
       trackMessagePerformance();
-      
+
       // Use batched state changes for better performance
-      batchStateChanges(roomId, newState);
+      batchStateChanges(roomId, newState, {
+        ...(typeof playerCount === 'number' ? { playerCount } : {}),
+        ...(typeof phaseStartedAt === 'number' ? { phaseStartedAt } : {}),
+        ...(typeof phaseEndsAt === 'number' ? { phaseEndsAt } : {}),
+        ...(typeof countdown === 'number' ? { countdown } : {})
+      });
     };
 
     const handleRoomCreated = ({ roomId, roomCode }: { roomId: string; roomCode: string }) => {
