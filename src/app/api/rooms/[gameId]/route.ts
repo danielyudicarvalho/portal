@@ -6,9 +6,12 @@ interface ActiveRoom {
   gameId: string;
   playerCount: number;
   maxPlayers: number;
-  state: 'LOBBY' | 'COUNTDOWN' | 'PLAYING' | 'RESULTS';
+  state: 'LOBBY' | 'COUNTDOWN' | 'PLAYING' | 'RESULTS' | 'RESET';
   isPrivate: boolean;
   createdAt: number;
+  phaseStartedAt?: number;
+  phaseEndsAt?: number;
+  countdown?: number;
 }
 
 interface RoomStatistics {
@@ -22,6 +25,7 @@ interface RoomStatistics {
     COUNTDOWN: number;
     PLAYING: number;
     RESULTS: number;
+    RESET: number;
   };
 }
 
@@ -105,7 +109,8 @@ async function calculateRoomStatistics(rooms: ActiveRoom[]): Promise<RoomStatist
     LOBBY: rooms.filter(room => room.state === 'LOBBY').length,
     COUNTDOWN: rooms.filter(room => room.state === 'COUNTDOWN').length,
     PLAYING: rooms.filter(room => room.state === 'PLAYING').length,
-    RESULTS: rooms.filter(room => room.state === 'RESULTS').length
+    RESULTS: rooms.filter(room => room.state === 'RESULTS').length,
+    RESET: rooms.filter(room => room.state === 'RESET').length
   };
 
   return {

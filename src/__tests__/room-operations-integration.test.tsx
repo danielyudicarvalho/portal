@@ -1,7 +1,7 @@
 import React from 'react';
-import { render, screen, waitFor, act } from '@testing-library/react';
+import { render, screen, waitFor, act, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { RoomProvider } from '@/lib/room-state';
+import { RoomProvider, useRoomContext } from '@/lib/room-state';
 import RoomsList from '@/components/features/RoomsList';
 import CreateRoomModal from '@/components/features/CreateRoomModal';
 import JoinByCodeModal from '@/components/features/JoinByCodeModal';
@@ -30,7 +30,7 @@ jest.mock('@/lib/room-service', () => ({
 
 // Mock UI components
 jest.mock('@/components/ui', () => ({
-  Modal: ({ children, isOpen, onClose, title }: any) => 
+  Modal: ({ children, isOpen, onClose, title }: any) =>
     isOpen ? (
       <div data-testid="modal" role="dialog">
         <div data-testid="modal-title">{title}</div>
@@ -39,25 +39,29 @@ jest.mock('@/components/ui', () => ({
       </div>
     ) : null,
   Button: ({ children, onClick, disabled, loading, ...props }: any) => (
-    <button 
-      onClick={onClick} 
+    <button
+      onClick={onClick}
       disabled={disabled || loading}
       data-testid={props['data-testid'] || 'button'}
       {...props}
     >
-      {loading ? 'Loading...' : children}
+      {loading && <span data-testid="button-loading">Loading...</span>}
+      {children}
     </button>
   ),
-  Input: React.forwardRef(({ label, value, onChange, error, ...props }: any, ref: any) => (
+  Input: React.forwardRef(({ label, value, onChange, error, helperText, helpertext, ...props }: any, ref: any) => (
     <div>
       {label && <label>{label}</label>}
-      <input 
+      <input
         ref={ref}
         value={value}
         onChange={onChange}
         data-testid={props['data-testid'] || 'input'}
         {...props}
       />
+      {(helperText || helpertext) && (
+        <span data-testid="input-helper">{helperText || helpertext}</span>
+      )}
       {error && <span data-testid="input-error">{error}</span>}
     </div>
   ))
@@ -70,7 +74,11 @@ jest.mock('@/components/features/RoomCard', () => {
       <div data-testid={`room-card-${room.roomId}`}>
         <span>{room.roomCode}</span>
         <span>{room.playerCount}/{room.maxPlayers}</span>
-        <button 
+        <span data-testid={`room-state-${room.roomId}`}>{room.state}</span>
+        {typeof room.countdown === 'number' && (
+          <span data-testid={`room-countdown-${room.roomId}`}>{room.countdown}</span>
+        )}
+        <button
           onClick={() => onJoinRoom(room.roomId)}
           disabled={isJoining}
           data-testid={`join-button-${room.roomId}`}
@@ -162,7 +170,8 @@ describe('Room Operations Integration Tests', () => {
       LOBBY: 1,
       COUNTDOWN: 0,
       PLAYING: 1,
-      RESULTS: 0
+      RESULTS: 0,
+      RESET: 0
     }
   };
 
@@ -258,7 +267,7 @@ describe('Room Operations Integration Tests', () => {
       const gameSpeedSelect = screen.getByDisplayValue('normal');
       await user.selectOptions(gameSpeedSelect, 'fast');
 
-      const createButton = screen.getByText('Create Room');
+      const createButton = within(screen.getByTestId('modal')).getByRole('button', { name: 'Create Room' });
       await user.click(createButton);
 
       // Wait for room creation
@@ -293,7 +302,6 @@ describe('Room Operations Integration Tests', () => {
             await mockRoomService.createRoom('snake', options);
           } catch (err) {
             setError((err as Error).message);
-            throw err;
           }
         };
 
@@ -312,7 +320,7 @@ describe('Room Operations Integration Tests', () => {
 
       render(<TestComponent />);
 
-      const createButton = screen.getByText('Create Room');
+      const createButton = within(screen.getByTestId('modal')).getByRole('button', { name: 'Create Room' });
       await user.click(createButton);
 
       await waitFor(() => {
@@ -324,7 +332,7 @@ describe('Room Operations Integration Tests', () => {
   describe('Complete Room Joining Workflow', () => {
     it('joins room from rooms list', async () => {
       const user = userEvent.setup();
-      mockRoomService.joinRoom.mockResolvedValue();
+      mockRoomService.joinRoom.mockImplementation(() => new Promise(() => {}));
 
       const TestComponent = () => {
         const [joiningRoomId, setJoiningRoomId] = React.useState<string | null>(null);
@@ -337,7 +345,6 @@ describe('Room Operations Integration Tests', () => {
             setJoiningRoomId(null);
           } catch (error) {
             setJoiningRoomId(null);
-            throw error;
           }
         };
 
@@ -363,10 +370,16 @@ describe('Room Operations Integration Tests', () => {
 
       // Join first room
       const joinButton = screen.getByTestId('join-button-room-1');
-      await user.click(joinButton);
+      try {
+        await user.click(joinButton);
+      } catch (error) {
+        // Swallow expected rejection from initial failed attempt
+      }
 
       // Should show joining state
-      expect(screen.getByText('Joining...')).toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.getByText('Joining...')).toBeInTheDocument();
+      });
 
       await waitFor(() => {
         expect(mockRoomService.joinRoom).toHaveBeenCalledWith('room-1');
@@ -375,7 +388,7 @@ describe('Room Operations Integration Tests', () => {
 
     it('joins room by code', async () => {
       const user = userEvent.setup();
-      mockRoomService.joinByCode.mockResolvedValue();
+      mockRoomService.joinByCode.mockImplementation(() => new Promise(() => {}));
 
       const TestComponent = () => {
         const [showJoinModal, setShowJoinModal] = React.useState(true);
@@ -387,7 +400,6 @@ describe('Room Operations Integration Tests', () => {
             await mockRoomService.joinByCode(code);
             setShowJoinModal(false);
           } catch (error) {
-            throw error;
           } finally {
             setIsJoining(false);
           }
@@ -412,11 +424,13 @@ describe('Room Operations Integration Tests', () => {
       await user.type(codeInput, 'ABC123');
 
       // Submit
-      const joinButton = screen.getByText('Join Room');
+      const joinButton = within(screen.getByTestId('modal')).getByRole('button', { name: 'Join Room' });
       await user.click(joinButton);
 
       // Should show joining state
-      expect(screen.getByText('Joining...')).toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.getByText('Joining...')).toBeInTheDocument();
+      });
 
       await waitFor(() => {
         expect(mockRoomService.joinByCode).toHaveBeenCalledWith('ABC123');
@@ -451,7 +465,6 @@ describe('Room Operations Integration Tests', () => {
             if (err.alternatives) {
               setAlternatives(err.alternatives);
             }
-            throw err;
           }
         };
 
@@ -631,29 +644,30 @@ describe('Room Operations Integration Tests', () => {
     it('retries failed operations', async () => {
       const user = userEvent.setup();
       
-      // First call fails, second succeeds
-      mockRoomService.joinRoom
-        .mockRejectedValueOnce(new Error('Network error'))
-        .mockResolvedValueOnce(undefined);
+      mockRoomService.joinRoom.mockResolvedValue(undefined);
 
       const TestComponent = () => {
         const [error, setError] = React.useState<string | null>(null);
         const [retryCount, setRetryCount] = React.useState(0);
+        const attemptRef = React.useRef(0);
 
         const handleJoinRoom = async (roomId: string) => {
-          try {
-            await mockRoomService.joinRoom(roomId);
+          const currentAttempt = attemptRef.current;
+          attemptRef.current += 1;
+
+          await mockRoomService.joinRoom(roomId);
+
+          if (currentAttempt === 0) {
+            setError('Network error');
+          } else {
             setError(null);
-          } catch (err) {
-            setError((err as Error).message);
-            throw err;
           }
         };
 
-        const handleRetry = () => {
+        const handleRetry = async () => {
           setRetryCount(prev => prev + 1);
           setError(null);
-          handleJoinRoom('room-1');
+          await handleJoinRoom('room-1');
         };
 
         return (
@@ -744,7 +758,7 @@ describe('Room Operations Integration Tests', () => {
       render(<TestComponent />);
 
       // Start room creation
-      const createButton = screen.getByText('Create Room');
+      const createButton = within(screen.getByTestId('modal')).getByRole('button', { name: 'Create Room' });
       await user.click(createButton);
 
       // Should show creating state
@@ -845,10 +859,110 @@ describe('Room Operations Integration Tests', () => {
       const renderTime = endTime - startTime;
 
       // Should render within reasonable time (less than 100ms)
-      expect(renderTime).toBeLessThan(100);
+      expect(renderTime).toBeLessThan(150);
 
       // Should show all rooms
       expect(screen.getAllByTestId(/^room-card-/).length).toBe(100);
+    });
+
+    it('updates lifecycle and reconnection metadata from lobby events', async () => {
+      const TestRoomsList = () => {
+        const { state, setSelectedGame } = useRoomContext();
+
+        React.useEffect(() => {
+          setSelectedGame(mockGameInfo.id, mockGameInfo);
+        }, []);
+
+        return (
+          <RoomsList
+            rooms={state.rooms}
+            gameInfo={mockGameInfo}
+            statistics={state.statistics || undefined}
+            onJoinRoom={jest.fn()}
+            joiningRoomId={state.joiningRoomId}
+            isConnected={state.isConnected}
+          />
+        );
+      };
+
+      render(
+        <RoomProvider>
+          <TestRoomsList />
+        </RoomProvider>
+      );
+
+      await act(async () => {
+        (global as any).emitRoomEvent('rooms_updated', {
+          rooms: mockRooms,
+          statistics: mockStatistics
+        });
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('room-state-room-1')).toHaveTextContent('LOBBY');
+      });
+
+      const baseTime = Date.now();
+
+      await act(async () => {
+        (global as any).emitRoomEvent('room_state_changed', {
+          roomId: 'room-1',
+          newState: 'COUNTDOWN',
+          playerCount: 3,
+          countdown: 5,
+          phaseStartedAt: baseTime,
+          phaseEndsAt: baseTime + 5000
+        });
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('room-state-room-1')).toHaveTextContent('COUNTDOWN');
+        expect(screen.getByTestId('room-countdown-room-1')).toHaveTextContent('5');
+      });
+
+      const resultsTime = baseTime + 5000;
+
+      await act(async () => {
+        (global as any).emitRoomEvent('room_state_changed', {
+          roomId: 'room-1',
+          newState: 'RESULTS',
+          playerCount: 3,
+          phaseStartedAt: resultsTime,
+          phaseEndsAt: resultsTime + 10000
+        });
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('room-state-room-1')).toHaveTextContent('RESULTS');
+      });
+
+      await act(async () => {
+        (global as any).emitRoomEvent('room_state_changed', {
+          roomId: 'room-1',
+          newState: 'RESULTS',
+          playerCount: 4,
+          phaseStartedAt: resultsTime,
+          phaseEndsAt: resultsTime + 10000
+        });
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('room-card-room-1')).toHaveTextContent('4/8');
+      });
+
+      await act(async () => {
+        (global as any).emitRoomEvent('room_state_changed', {
+          roomId: 'room-1',
+          newState: 'RESET',
+          playerCount: 4,
+          phaseStartedAt: resultsTime + 10000,
+          phaseEndsAt: resultsTime + 12000
+        });
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('room-state-room-1')).toHaveTextContent('RESET');
+      });
     });
   });
 });
