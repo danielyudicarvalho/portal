@@ -1,6 +1,22 @@
 const { Room } = require('colyseus');
 const { BaseGameState, Player, GameResult } = require('../schemas/BaseGameState');
 
+const GAME_STATES = Object.freeze({
+  LOBBY: 'LOBBY',
+  COUNTDOWN: 'COUNTDOWN',
+  PLAYING: 'PLAYING',
+  RESULTS: 'RESULTS',
+  RESET: 'RESET',
+});
+
+const VALID_TRANSITIONS = {
+  [GAME_STATES.LOBBY]: [GAME_STATES.COUNTDOWN],
+  [GAME_STATES.COUNTDOWN]: [GAME_STATES.PLAYING, GAME_STATES.LOBBY],
+  [GAME_STATES.PLAYING]: [GAME_STATES.RESULTS],
+  [GAME_STATES.RESULTS]: [GAME_STATES.RESET, GAME_STATES.LOBBY],
+  [GAME_STATES.RESET]: [GAME_STATES.LOBBY],
+};
+
 class BaseGameRoom extends Room {
   constructor() {
     super();
@@ -11,21 +27,32 @@ class BaseGameRoom extends Room {
     this.gameLoopInterval = null;
     this.autoResetTimeout = null;
     this.reconnectTimeouts = new Map();
+    this.lifecycleTimings = {
+      countdown: 5000,
+      results: 30000,
+      reset: 2000,
+    };
+    this.resetPhaseTimeout = null;
   }
 
   onCreate(options = {}) {
     console.log(`🎮 Creating ${this.constructor.name} with options:`, options);
-    
+
     this.setState(new BaseGameState());
-    
+
     // Set room configuration
     this.state.gameId = options.gameId || 'unknown';
     this.state.roomCode = options.roomCode || this.generateRoomCode();
     this.state.isPrivate = options.isPrivate || false;
     this.state.minPlayers = options.minPlayers || 2;
     this.state.maxPlayers = options.maxPlayers || 8;
+    this.state.state = GAME_STATES.LOBBY;
+    this.state.phaseStartedAt = Date.now();
+    this.state.phaseEndsAt = 0;
+    this.state.createdAt = Date.now();
+    this.state.lastUpdate = Date.now();
     this.maxClients = this.state.maxPlayers;
-    
+
     // Apply game-specific settings
     if (options.settings) {
       this.state.settings = JSON.stringify({ ...JSON.parse(this.state.settings), ...options.settings });
@@ -33,7 +60,9 @@ class BaseGameRoom extends Room {
 
     // Set up periodic AFK checking
     this.setupAFKCheck();
-    
+
+    this.updateRoomMetadata();
+
     console.log(`✅ Room created: ${this.state.roomCode} (${this.state.gameId})`);
   }
 
@@ -41,20 +70,13 @@ class BaseGameRoom extends Room {
     console.log(`👤 Player ${client.sessionId} joining room ${this.state.roomCode}`);
     
     // Check if player is reconnecting
-    const existingPlayer = this.state.players.get(client.sessionId);
+    const existingPlayer = this.getPlayer(client.sessionId);
     if (existingPlayer) {
       return this.handleReconnect(client, existingPlayer);
     }
 
-    // Create new player
-    const player = new Player();
-    player.id = client.sessionId;
-    player.name = options.name || `Player ${this.state.players.size + 1}`;
-    player.isHost = this.state.players.size === 0; // First player is host
-    player.lastActivity = Date.now();
-    
-    this.state.players.set(client.sessionId, player);
-    
+    const player = this.addPlayer(client, options);
+
     // Send welcome message
     client.send('welcome', {
       playerId: client.sessionId,
@@ -79,7 +101,7 @@ class BaseGameRoom extends Room {
     const player = this.state.players.get(client.sessionId);
     if (!player) return;
 
-    if (consented || this.state.state === 'LOBBY') {
+    if (consented || this.state.state === GAME_STATES.LOBBY) {
       // Immediate removal in lobby or if consented
       this.removePlayer(client.sessionId);
     } else {
@@ -116,26 +138,72 @@ class BaseGameRoom extends Room {
     console.log(`🎮 Unhandled game message: ${type}`, message);
   }
 
+  addPlayer(client, options = {}) {
+    const player = new Player();
+    player.id = client.sessionId;
+    player.name = options.name || `Player ${this.state.players.size + 1}`;
+    player.isHost = this.state.players.size === 0;
+    player.lastActivity = Date.now();
+    player.isConnected = true;
+    player.isReady = false;
+
+    this.state.players.set(client.sessionId, player);
+    this.touchState();
+    this.updateRoomMetadata();
+
+    return player;
+  }
+
+  getPlayer(playerId) {
+    return this.state.players.get(playerId);
+  }
+
+  setPlayerReady(playerId, ready) {
+    const player = this.getPlayer(playerId);
+    if (!player || !player.isConnected) {
+      return { updated: false, player: null, previousReady: false };
+    }
+
+    if (this.state.state !== GAME_STATES.LOBBY) {
+      return { updated: false, player, previousReady: player.isReady };
+    }
+
+    const previousReady = player.isReady;
+    if (previousReady === ready) {
+      return { updated: false, player, previousReady };
+    }
+
+    player.isReady = ready;
+    player.lastActivity = Date.now();
+    this.touchState();
+    this.updateRoomMetadata();
+
+    return { updated: true, player, previousReady };
+  }
+
   handlePlayerReady(playerId, ready) {
-    const player = this.state.players.get(playerId);
+    const { player, updated, previousReady } = this.setPlayerReady(playerId, ready);
     if (!player || !player.isConnected) {
       console.log(`⚠️ Cannot set ready status for invalid/disconnected player: ${playerId}`);
       return;
     }
 
     // Only allow ready status changes in LOBBY state
-    if (this.state.state !== 'LOBBY') {
+    if (this.state.state !== GAME_STATES.LOBBY) {
       console.log(`⚠️ Cannot change ready status in ${this.state.state} state`);
       return;
     }
 
-    const wasReady = player.isReady;
-    player.isReady = ready;
-    
+    const wasReady = previousReady;
+
+    if (!updated && previousReady === ready) {
+      return;
+    }
+
     const canStart = this.state.canStart();
     const connectedPlayers = this.state.getConnectedPlayers();
     const readyPlayers = this.state.getReadyPlayers();
-    
+
     this.broadcast('player_ready', {
       playerId,
       playerName: player.name,
@@ -147,7 +215,7 @@ class BaseGameRoom extends Room {
     });
 
     console.log(`🎯 Player ${player.name} is ${ready ? 'ready' : 'not ready'} (${readyPlayers.length}/${connectedPlayers.length} ready, min: ${this.state.minPlayers})`);
-    
+
     // Auto-start if all players are ready and we have enough players
     if (ready && canStart && !wasReady) {
       console.log(`✨ All players ready! Game can start.`);
@@ -211,7 +279,7 @@ class BaseGameRoom extends Room {
       return;
     }
     
-    if (this.state.state !== 'RESULTS') {
+    if (this.state.state !== GAME_STATES.RESULTS) {
       console.log(`⚠️ Cannot vote for rematch in ${this.state.state} state`);
       return;
     }
@@ -219,7 +287,9 @@ class BaseGameRoom extends Room {
     // Toggle player's rematch vote (using isReady as rematch vote)
     const wasReady = player.isReady;
     player.isReady = !wasReady;
-    
+    this.touchState();
+    this.updateRoomMetadata();
+
     const connectedPlayers = this.state.getConnectedPlayers();
     const readyForRematch = connectedPlayers.filter(p => p.isReady).length;
     
@@ -244,13 +314,13 @@ class BaseGameRoom extends Room {
         this.autoResetTimeout = null;
       }
       
-      this.resetGame();
+      this.resetGame('REMATCH');
     }
   }
 
   startCountdown() {
     // Validate state transition
-    if (this.state.state !== 'LOBBY') {
+    if (this.state.state !== GAME_STATES.LOBBY) {
       console.log(`⚠️ Cannot start countdown from ${this.state.state} state`);
       return;
     }
@@ -258,7 +328,6 @@ class BaseGameRoom extends Room {
     // Double-check we still have enough ready players
     if (!this.state.canStart()) {
       console.log(`⚠️ Cannot start countdown: not enough ready players`);
-      this.state.state = 'LOBBY'; // Ensure we stay in lobby
       return;
     }
 
@@ -269,11 +338,12 @@ class BaseGameRoom extends Room {
     }
 
     // Initialize countdown state
-    this.transitionToState('COUNTDOWN', { countdown: 5 });
-    this.state.countdown = 5;
+    const countdownSeconds = Math.max(1, Math.round(this.lifecycleTimings.countdown / 1000));
+    this.state.countdown = countdownSeconds;
+    this.transitionToState(GAME_STATES.COUNTDOWN, { countdown: countdownSeconds }, this.lifecycleTimings.countdown);
 
     const connectedPlayers = this.state.getConnectedPlayers();
-    this.broadcast('countdown_started', { 
+    this.broadcast('countdown_started', {
       countdown: this.state.countdown,
       playerCount: connectedPlayers.length
     });
@@ -286,6 +356,8 @@ class BaseGameRoom extends Room {
         this.countdownInterval = null;
         this.startGame();
       } else {
+        this.touchState();
+        this.updateRoomMetadata();
         this.broadcast('countdown_tick', { countdown: this.state.countdown });
         console.log(`⏰ Countdown: ${this.state.countdown}`);
       }
@@ -294,9 +366,26 @@ class BaseGameRoom extends Room {
     console.log(`⏰ Countdown started for room ${this.state.roomCode} with ${connectedPlayers.length} players`);
   }
 
+  cancelCountdown(reason = 'CANCELLED') {
+    if (this.countdownInterval) {
+      clearInterval(this.countdownInterval);
+      this.countdownInterval = null;
+    }
+
+    if (this.state.state !== GAME_STATES.COUNTDOWN) {
+      return;
+    }
+
+    this.state.countdown = 0;
+    this.transitionToState(GAME_STATES.LOBBY, { reason, cancelled: true });
+    this.broadcast('countdown_cancelled', { reason });
+
+    console.log(`⏹️ Countdown cancelled for room ${this.state.roomCode} (${reason})`);
+  }
+
   startGame() {
     // Validate state transition
-    if (this.state.state !== 'COUNTDOWN') {
+    if (this.state.state !== GAME_STATES.COUNTDOWN) {
       console.log(`⚠️ Cannot start game from ${this.state.state} state`);
       return;
     }
@@ -305,14 +394,14 @@ class BaseGameRoom extends Room {
     const connectedPlayers = this.state.getConnectedPlayers();
     if (connectedPlayers.length < this.state.minPlayers) {
       console.log(`⚠️ Cannot start game: not enough players (${connectedPlayers.length}/${this.state.minPlayers})`);
-      this.resetGame(); // Reset to lobby if players left during countdown
+      this.cancelCountdown('NOT_ENOUGH_PLAYERS');
       return;
     }
 
     // Transition to PLAYING state
     this.state.gameStartTime = Date.now();
     this.state.countdown = 0;
-    this.transitionToState('PLAYING', { gameStartTime: this.state.gameStartTime });
+    this.transitionToState(GAME_STATES.PLAYING, { gameStartTime: this.state.gameStartTime });
 
     // Reset all connected players for game start
     this.state.players.forEach(player => {
@@ -346,18 +435,18 @@ class BaseGameRoom extends Room {
 
   endGame(results = []) {
     // Validate state transition
-    if (this.state.state !== 'PLAYING') {
+    if (this.state.state !== GAME_STATES.PLAYING) {
       console.log(`⚠️ Cannot end game from ${this.state.state} state`);
       return;
     }
 
     // Transition to RESULTS state
     this.state.gameEndTime = Date.now();
-    this.transitionToState('RESULTS', { 
+    this.transitionToState(GAME_STATES.RESULTS, {
       gameEndTime: this.state.gameEndTime,
       winner: results.length > 0 ? results[0].playerId : null
-    });
-    
+    }, this.lifecycleTimings.results);
+
     // Convert results to GameResult schema objects
     this.state.results.clear();
     results.forEach((result, index) => {
@@ -368,7 +457,7 @@ class BaseGameRoom extends Room {
       gameResult.rank = index + 1;
       this.state.results.push(gameResult);
     });
-    
+
     // Determine winner
     if (results.length > 0) {
       this.state.winner = results[0].playerId;
@@ -377,7 +466,7 @@ class BaseGameRoom extends Room {
     }
 
     const gameDuration = this.state.gameEndTime - this.state.gameStartTime;
-    
+
     this.broadcast('game_ended', {
       results: Array.from(this.state.results),
       winner: this.state.winner,
@@ -397,80 +486,118 @@ class BaseGameRoom extends Room {
       player.isReady = false;
     });
 
-    // Auto-reset after 30 seconds if no rematch (Requirement 1.6)
+    if (this.autoResetTimeout) {
+      clearTimeout(this.autoResetTimeout);
+      this.autoResetTimeout = null;
+    }
+
+    // Auto-reset after configured results window if no rematch
     this.autoResetTimeout = setTimeout(() => {
-      if (this.state.state === 'RESULTS') {
-        console.log(`⏰ Auto-resetting room ${this.state.roomCode} after 30 seconds`);
-        this.resetGame();
+      if (this.state.state === GAME_STATES.RESULTS) {
+        console.log(`⏰ Auto-resetting room ${this.state.roomCode} after results window`);
+        this.resetGame('AUTO');
       }
-    }, 30000);
+    }, this.lifecycleTimings.results);
 
     console.log(`🏁 Game ended in room ${this.state.roomCode} after ${this.formatDuration(gameDuration)}`);
   }
 
-  resetGame() {
+  resetGame(reason = 'MANUAL') {
     // Clear any pending timeouts
     if (this.autoResetTimeout) {
       clearTimeout(this.autoResetTimeout);
       this.autoResetTimeout = null;
     }
-    
+
     if (this.countdownInterval) {
       clearInterval(this.countdownInterval);
       this.countdownInterval = null;
     }
 
-    // Reset game state (Requirement 1.5 - reset to LOBBY state)
-    const previousState = this.state.state;
-    this.transitionToState('LOBBY', { previousState });
-    this.state.countdown = 0;
-    this.state.gameStartTime = 0;
-    this.state.gameEndTime = 0;
-    this.state.winner = '';
-    this.state.results.clear();
-
-    // Reset all connected players
-    this.state.players.forEach(player => {
-      if (player.isConnected) {
-        player.isReady = false;
-        player.score = 0;
-        player.isAlive = true;
-      }
-    });
-
-    const connectedPlayers = this.state.getConnectedPlayers();
-    
-    this.broadcast('game_reset', {
-      previousState,
-      playerCount: connectedPlayers.length,
-      minPlayers: this.state.minPlayers
-    });
-    
-    // Call game-specific reset logic
-    try {
-      this.onGameReset();
-    } catch (error) {
-      console.error(`❌ Error in game-specific reset:`, error);
+    if (this.resetPhaseTimeout) {
+      clearTimeout(this.resetPhaseTimeout);
+      this.resetPhaseTimeout = null;
     }
-    
-    console.log(`🔄 Game reset in room ${this.state.roomCode} from ${previousState} to LOBBY with ${connectedPlayers.length} players`);
+
+    const previousState = this.state.state;
+
+    if (previousState === GAME_STATES.COUNTDOWN || previousState === GAME_STATES.LOBBY) {
+      this.transitionToState(GAME_STATES.LOBBY, { previousState, reason });
+      this.state.countdown = 0;
+      this.touchState();
+      this.updateRoomMetadata();
+      return;
+    }
+
+    this.transitionToState(GAME_STATES.RESET, { previousState, reason }, this.lifecycleTimings.reset);
+
+    const finalizeReset = () => {
+      this.state.countdown = 0;
+      this.state.gameStartTime = 0;
+      this.state.gameEndTime = 0;
+      this.state.winner = '';
+      this.state.results.clear();
+
+      // Reset all connected players
+      this.state.players.forEach(player => {
+        if (player.isConnected) {
+          player.isReady = false;
+          player.score = 0;
+          player.isAlive = true;
+        }
+      });
+
+      const connectedPlayers = this.state.getConnectedPlayers();
+
+      try {
+        this.onGameReset();
+      } catch (error) {
+        console.error(`❌ Error in game-specific reset:`, error);
+      }
+
+      this.transitionToState(GAME_STATES.LOBBY, { previousState: GAME_STATES.RESET, reason });
+
+      this.broadcast('game_reset', {
+        previousState,
+        playerCount: connectedPlayers.length,
+        minPlayers: this.state.minPlayers,
+        reason
+      });
+
+      console.log(`🔄 Game reset in room ${this.state.roomCode} from ${previousState} to LOBBY with ${connectedPlayers.length} players`);
+    };
+
+    if (this.lifecycleTimings.reset > 0) {
+      this.resetPhaseTimeout = setTimeout(() => {
+        this.resetPhaseTimeout = null;
+        finalizeReset();
+      }, this.lifecycleTimings.reset);
+    } else {
+      finalizeReset();
+    }
   }
 
   handleDisconnect(playerId) {
-    const player = this.state.players.get(playerId);
+    const player = this.getPlayer(playerId);
     if (!player) return;
 
     player.isConnected = false;
-    
+    player.isReady = false;
+    this.touchState();
+
     // Set reconnection timeout
     const timeout = setTimeout(() => {
       this.removePlayer(playerId);
     }, this.state.reconnectTimeout);
-    
+
     this.reconnectTimeouts.set(playerId, timeout);
-    
+
     this.broadcast('player_disconnected', { playerId });
-    
+
+    if (this.state.state === GAME_STATES.COUNTDOWN && !this.state.canStart()) {
+      this.cancelCountdown('PLAYER_DISCONNECTED');
+    }
+
     // Reassign host if needed
     if (player.isHost) {
       const newHost = this.state.assignNewHost();
@@ -478,6 +605,8 @@ class BaseGameRoom extends Room {
         this.broadcast('new_host', { playerId: newHost.id });
       }
     }
+
+    this.updateRoomMetadata();
 
     console.log(`⚠️ Player ${player.name} disconnected, ${this.state.reconnectTimeout/1000}s to reconnect`);
   }
@@ -492,19 +621,22 @@ class BaseGameRoom extends Room {
 
     player.isConnected = true;
     player.lastActivity = Date.now();
-    
+    this.touchState();
+
     client.send('reconnected', {
       gameState: this.state.state,
       isHost: player.isHost
     });
-    
+
     this.broadcast('player_reconnected', { playerId: client.sessionId }, { except: client });
-    
+
+    this.updateRoomMetadata();
+
     console.log(`🔄 Player ${player.name} reconnected`);
   }
 
   removePlayer(playerId) {
-    const player = this.state.players.get(playerId);
+    const player = this.getPlayer(playerId);
     if (!player) return;
 
     const playerName = player.name;
@@ -518,17 +650,18 @@ class BaseGameRoom extends Room {
     }
 
     this.state.players.delete(playerId);
-    
-    this.broadcast('player_left', { 
+    this.touchState();
+
+    this.broadcast('player_left', {
       playerId,
       playerName
     });
-    
+
     // Reassign host if needed
     if (wasHost) {
       const newHost = this.state.assignNewHost();
       if (newHost) {
-        this.broadcast('new_host', { 
+        this.broadcast('new_host', {
           playerId: newHost.id,
           playerName: newHost.name
         });
@@ -537,19 +670,15 @@ class BaseGameRoom extends Room {
     }
 
     const remainingPlayers = this.state.getConnectedPlayers();
-    
+
     // Handle state-specific logic when players leave
-    if (this.state.state === 'COUNTDOWN') {
+    if (this.state.state === GAME_STATES.COUNTDOWN) {
       // Cancel countdown if we don't have enough players
       if (remainingPlayers.length < this.state.minPlayers) {
         console.log(`⚠️ Cancelling countdown: not enough players (${remainingPlayers.length}/${this.state.minPlayers})`);
-        if (this.countdownInterval) {
-          clearInterval(this.countdownInterval);
-          this.countdownInterval = null;
-        }
-        this.resetGame();
+        this.cancelCountdown('PLAYER_LEFT');
       }
-    } else if (this.state.state === 'PLAYING') {
+    } else if (this.state.state === GAME_STATES.PLAYING) {
       // Check if game should end due to insufficient players
       const alivePlayers = this.state.getAlivePlayers();
       if (alivePlayers.length < 2) {
@@ -561,20 +690,30 @@ class BaseGameRoom extends Room {
     // Enhanced empty room disposal (Requirement 3.6)
     if (remainingPlayers.length === 0) {
       console.log(`🗑️ No players remaining in room ${this.state.roomCode}, disposing room automatically`);
-      
+
       // Log disposal for monitoring
       const roomAge = Date.now() - (this.state.createdAt || Date.now());
       console.log(`📊 Auto-disposing empty room: ${this.state.roomCode} (${this.state.gameId}) - Age: ${this.formatDuration(roomAge)}`);
-      
+
       // Graceful disposal with slight delay to allow for reconnections
       setTimeout(() => {
         if (this.state.getConnectedPlayers().length === 0) {
           this.disconnect();
         }
       }, 1000); // 1 second grace period
+
+      if (this.state.state !== GAME_STATES.PLAYING) {
+        this.resetGame('EMPTY_ROOM');
+      }
     }
 
+    this.updateRoomMetadata();
+
     console.log(`❌ Player ${playerName} removed from room (${remainingPlayers.length} remaining)`);
+  }
+
+  touchState() {
+    this.state.lastUpdate = Date.now();
   }
 
   setupAFKCheck() {
@@ -651,7 +790,12 @@ class BaseGameRoom extends Room {
       clearTimeout(this.autoResetTimeout);
       this.autoResetTimeout = null;
     }
-    
+
+    if (this.resetPhaseTimeout) {
+      clearTimeout(this.resetPhaseTimeout);
+      this.resetPhaseTimeout = null;
+    }
+
     this.reconnectTimeouts.forEach(timeout => clearTimeout(timeout));
     this.reconnectTimeouts.clear();
     
@@ -671,7 +815,10 @@ class BaseGameRoom extends Room {
         maxPlayers: this.state.maxPlayers,
         isPrivate: this.state.isPrivate,
         createdAt: this.state.createdAt || Date.now(),
-        lastUpdate: Date.now()
+        lastUpdate: this.state.lastUpdate || Date.now(),
+        phaseStartedAt: this.state.phaseStartedAt,
+        phaseEndsAt: this.state.phaseEndsAt,
+        countdown: this.state.countdown
       });
     } catch (error) {
       console.warn('⚠️ Could not update room metadata:', error.message);
@@ -679,24 +826,47 @@ class BaseGameRoom extends Room {
   }
 
   // Enhanced state transitions with lobby notifications
-  transitionToState(newState, additionalData = {}) {
+  transitionToState(newState, additionalData = {}, phaseDuration = 0) {
     const oldState = this.state.state;
+
+    if (oldState === newState) {
+      return;
+    }
+
+    const validTargets = VALID_TRANSITIONS[oldState] || [];
+    if (oldState && validTargets.length > 0 && !validTargets.includes(newState)) {
+      console.warn(`⚠️ Invalid state transition attempted: ${oldState} → ${newState}`);
+      return;
+    }
+
     this.state.state = newState;
-    
+    this.state.phaseStartedAt = Date.now();
+    this.state.phaseEndsAt = phaseDuration > 0 ? this.state.phaseStartedAt + phaseDuration : 0;
+    this.touchState();
+
     // Update metadata
     this.updateRoomMetadata();
-    
+
+    const transitionPayload = {
+      roomId: this.roomId,
+      state: newState,
+      previousState: oldState,
+      playerCount: this.state.getConnectedPlayers().length,
+      phaseStartedAt: this.state.phaseStartedAt,
+      phaseEndsAt: this.state.phaseEndsAt,
+      countdown: this.state.countdown,
+      ...additionalData
+    };
+
     // Notify lobby via presence pub/sub (distributed-safe)
     this.publishLobbyEvent('room_state_changed', {
       roomId: this.roomId,
       newState,
-      additionalData: {
-        oldState,
-        playerCount: this.state.getConnectedPlayers().length,
-        ...additionalData
-      }
+      additionalData: transitionPayload
     });
-    
+
+    this.broadcast('room_state_updated', transitionPayload);
+
     console.log(`🔄 Room ${this.state.roomCode} transitioned: ${oldState} → ${newState}`);
   }
 
@@ -723,4 +893,4 @@ class BaseGameRoom extends Room {
   }
 }
 
-module.exports = { BaseGameRoom };
+module.exports = { BaseGameRoom, GAME_STATES };

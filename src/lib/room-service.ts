@@ -36,9 +36,12 @@ export interface ActiveRoom {
   gameId: string;
   playerCount: number;
   maxPlayers: number;
-  state: 'LOBBY' | 'COUNTDOWN' | 'PLAYING' | 'RESULTS';
+  state: 'LOBBY' | 'COUNTDOWN' | 'PLAYING' | 'RESULTS' | 'RESET';
   isPrivate: boolean;
   createdAt: number;
+  phaseStartedAt?: number;
+  phaseEndsAt?: number;
+  countdown?: number;
 }
 
 export interface RoomCreationOptions {
@@ -59,6 +62,7 @@ export interface RoomStatistics {
     COUNTDOWN: number;
     PLAYING: number;
     RESULTS: number;
+    RESET: number;
   };
 }
 
@@ -73,7 +77,7 @@ export interface RoomAlternative {
   roomCode: string;
   playerCount: number;
   maxPlayers: number;
-  state: 'LOBBY' | 'COUNTDOWN' | 'PLAYING' | 'RESULTS';
+  state: 'LOBBY' | 'COUNTDOWN' | 'PLAYING' | 'RESULTS' | 'RESET';
   similarity: number; // 0-1 score indicating how similar this room is to the requested one
 }
 
@@ -295,20 +299,7 @@ export class RoomService {
       console.log('📡 Received room updates:', data.stats || 'no stats');
       this.emit('rooms_updated', {
         rooms: data.activeRooms || [],
-        statistics: {
-          totalRooms: data.totalRooms || 0,
-          publicRooms: data.publicRooms || 0,
-          privateRooms: data.privateRooms || 0,
-          totalPlayers: data.totalPlayers || 0,
-          averagePlayersPerRoom: data.totalRooms > 0 ? 
-            Math.round((data.totalPlayers / data.totalRooms) * 10) / 10 : 0,
-          roomsByState: {
-            LOBBY: 0,
-            COUNTDOWN: 0,
-            PLAYING: 0,
-            RESULTS: 0
-          }
-        }
+        statistics: this.calculateStatistics(data.activeRooms || [])
       });
     });
 
@@ -781,7 +772,8 @@ export class RoomService {
         LOBBY: rooms.filter(room => room.state === 'LOBBY').length,
         COUNTDOWN: rooms.filter(room => room.state === 'COUNTDOWN').length,
         PLAYING: rooms.filter(room => room.state === 'PLAYING').length,
-        RESULTS: rooms.filter(room => room.state === 'RESULTS').length
+        RESULTS: rooms.filter(room => room.state === 'RESULTS').length,
+        RESET: rooms.filter(room => room.state === 'RESET').length
       }
     };
   }
