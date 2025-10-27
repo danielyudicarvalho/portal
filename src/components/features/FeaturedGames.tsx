@@ -59,46 +59,46 @@ const FeaturedGames: React.FC<FeaturedGamesProps> = ({
     },
     {
       id: '1',
-      title: 'Mega Fortune Slots',
-      provider: 'NetEnt',
-      thumbnail: '/api/placeholder/300/200',
-      category: 'Slots',
+      title: 'Memdot',
+      provider: 'In-House',
+      thumbnail: '/images/game-placeholder.svg',
+      category: 'Classic',
       rating: 4.8,
       isHot: true,
       isFavorite: false,
-      description: 'Progressive jackpot slot with luxury theme and massive payouts'
+      description: 'Test your memory! Remember the colored circles and click on them when they turn white.'
     },
     {
       id: '2',
-      title: 'Live Blackjack Pro',
-      provider: 'Evolution Gaming',
-      thumbnail: '/api/placeholder/300/200',
-      category: 'Live Casino',
+      title: 'The Battle',
+      provider: 'In-House',
+      thumbnail: '/images/game-placeholder.svg',
+      category: 'Team',
       rating: 4.9,
       isNew: true,
       isFavorite: true,
-      description: 'Professional live blackjack with real dealers and HD streaming'
+      description: 'Real-time multiplayer tank battle with rock-paper-scissors mechanics!'
     },
     {
       id: '3',
-      title: 'Football Champions',
-      provider: 'Pragmatic Play',
-      thumbnail: '/api/placeholder/300/200',
-      category: 'Sports',
+      title: 'Snake Battle',
+      provider: 'In-House',
+      thumbnail: '/images/game-placeholder.svg',
+      category: 'Survival',
       rating: 4.7,
       isFavorite: false,
-      description: 'Sports-themed slot with championship bonuses and free spins'
+      description: 'Real-time multiplayer snake game inspired by Slither.io! Battle up to 8 players.'
     },
     {
       id: '4',
-      title: 'Dragon\'s Gold',
-      provider: 'Red Tiger',
-      thumbnail: '/api/placeholder/300/200',
-      category: 'Slots',
+      title: 'Box Jump Tournament',
+      provider: 'In-House',
+      thumbnail: '/images/game-placeholder.svg',
+      category: 'Tournament',
       rating: 4.6,
       isHot: true,
       isFavorite: false,
-      description: 'Asian-themed adventure with expanding wilds and multipliers'
+      description: 'Turn-based multiplayer platformer! Compete with other players in tournaments.'
     }
   ];
 
