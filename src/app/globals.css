@@ -182,8 +182,9 @@ body {
   /* Room-specific animations */
   .animate-room-enter {
     animation: roomEnter 0.4s ease-out forwards;
-    opacity: 0;
-    transform: translateY(20px) scale(0.95);
+    /* Start visible by default to avoid hidden content if animations are disabled */
+    opacity: 1;
+    transform: none;
   }
 
   .animate-room-update {
@@ -214,20 +215,33 @@ body {
 
   .animate-slide-in-right {
     animation: slideInRight 0.3s ease-out forwards;
-    opacity: 0;
-    transform: translateX(20px);
+    opacity: 1;
+    transform: none;
   }
 
   .animate-slide-in-left {
     animation: slideInLeft 0.3s ease-out forwards;
-    opacity: 0;
-    transform: translateX(-20px);
+    opacity: 1;
+    transform: none;
   }
 
   .animate-fade-in-up {
     animation: fadeInUp 0.5s ease-out forwards;
-    opacity: 0;
-    transform: translateY(30px);
+    opacity: 1;
+    transform: none;
+  }
+
+  /* Respect reduced motion preferences: ensure elements remain visible */
+  @media (prefers-reduced-motion: reduce) {
+    .animate-room-enter,
+    .animate-modal-enter,
+    .animate-slide-in-right,
+    .animate-slide-in-left,
+    .animate-fade-in-up {
+      animation: none !important;
+      opacity: 1 !important;
+      transform: none !important;
+    }
   }
 
   /* Staggered animations for lists */

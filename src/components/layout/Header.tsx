@@ -31,10 +31,10 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle, isMobileMenuOpen })
 
   const navigation = [
     { name: 'Home', href: '/' },
-    { name: 'Casino', href: '/games/casino' },
-    { name: 'Sports', href: '/games/sports' },
-    { name: 'Live', href: '/games/live' },
-    { name: 'Promotions', href: '/promotions' },
+    { name: 'Classic', href: '/games/classic' },
+    { name: 'Team', href: '/games/team' },
+    { name: 'Survival', href: '/games/survival' },
+    { name: 'Tournament', href: '/games/tournament' },
   ];
 
   return (

@@ -16,7 +16,8 @@ import {
   PuzzlePieceIcon,
   CommandLineIcon,
   NumberedListIcon,
-  UsersIcon
+  UsersIcon,
+  BoltIcon
 } from '@heroicons/react/24/outline';
 
 interface SidebarProps {
@@ -41,27 +42,47 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen = true, onClose }) => {
       current: pathname === '/games'
     },
     {
-      name: 'Casino Games',
-      href: '/games/casino',
+      name: 'Classic Games',
+      href: '/games/classic',
       icon: SparklesIcon,
-      current: pathname.startsWith('/games/casino'),
+      current: pathname.startsWith('/games/classic'),
       children: [
-        { name: 'Slots', href: '/games/casino/slots' },
-        { name: 'Table Games', href: '/games/casino/table' },
-        { name: 'Card Games', href: '/games/casino/cards' },
-        { name: 'Roulette', href: '/games/casino/roulette' },
+        { name: 'Puzzle Games', href: '/games/classic/puzzle' },
+        { name: 'Memory Games', href: '/games/classic/memory' },
+        { name: 'Arcade Games', href: '/games/classic/arcade' },
       ]
     },
     {
-      name: 'Sports Betting',
-      href: '/games/sports',
+      name: 'Team Games',
+      href: '/games/team',
       icon: TrophyIcon,
-      current: pathname.startsWith('/games/sports'),
+      current: pathname.startsWith('/games/team'),
       children: [
-        { name: 'Football', href: '/games/sports/football' },
-        { name: 'Basketball', href: '/games/sports/basketball' },
-        { name: 'Tennis', href: '/games/sports/tennis' },
-        { name: 'Esports', href: '/games/sports/esports' },
+        { name: 'Cooperative', href: '/games/team/cooperative' },
+        { name: 'Competitive', href: '/games/team/competitive' },
+        { name: 'Battle Arena', href: '/games/team/battle' },
+      ]
+    },
+    {
+      name: 'Survival Games',
+      href: '/games/survival',
+      icon: FireIcon,
+      current: pathname.startsWith('/games/survival'),
+      children: [
+        { name: 'Endless Runner', href: '/games/survival/endless' },
+        { name: 'Battle Royale', href: '/games/survival/battle-royale' },
+        { name: 'Last Stand', href: '/games/survival/last-stand' },
+      ]
+    },
+    {
+      name: 'Tournament',
+      href: '/games/tournament',
+      icon: BoltIcon,
+      current: pathname.startsWith('/games/tournament'),
+      children: [
+        { name: 'Ranked Matches', href: '/games/tournament/ranked' },
+        { name: 'Championships', href: '/games/tournament/championships' },
+        { name: 'Leaderboards', href: '/games/tournament/leaderboards' },
       ]
     },
     {

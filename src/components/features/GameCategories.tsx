@@ -29,67 +29,40 @@ interface GameCategoriesProps {
 const GameCategories: React.FC<GameCategoriesProps> = ({ onCategoryClick }) => {
   const categories: GameCategory[] = [
     {
-      id: 'casino',
-      name: 'Casino Games',
-      description: 'Classic slots, poker, blackjack and more',
+      id: 'classic',
+      name: 'Classic',
+      description: 'Timeless games that never go out of style',
       icon: <SparklesIcon className="h-8 w-8" />,
-      gameCount: 850,
+      gameCount: 8,
       color: 'from-gaming-accent to-orange-500',
-      href: '/games/casino'
+      href: '/games/classic'
     },
     {
-      id: 'sports',
-      name: 'Sports Betting',
-      description: 'Live sports betting with best odds',
+      id: 'team',
+      name: 'Team',
+      description: 'Cooperative and competitive team-based games',
       icon: <TrophyIcon className="h-8 w-8" />,
-      gameCount: 120,
+      gameCount: 1,
       color: 'from-gaming-secondary to-blue-500',
-      href: '/games/sports'
+      href: '/games/team'
     },
     {
-      id: 'live',
-      name: 'Live Games',
-      description: 'Real dealers, real-time action',
+      id: 'survival',
+      name: 'Survival',
+      description: 'Test your endurance and survival skills',
       icon: <FireIcon className="h-8 w-8" />,
-      gameCount: 45,
+      gameCount: 3,
       color: 'from-red-500 to-pink-500',
-      href: '/games/live'
+      href: '/games/survival'
     },
     {
-      id: 'slots',
-      name: 'Slot Machines',
-      description: 'Thousands of themed slot games',
+      id: 'tournament',
+      name: 'Tournament',
+      description: 'Competitive tournaments and ranked matches',
       icon: <BoltIcon className="h-8 w-8" />,
-      gameCount: 1200,
+      gameCount: 1,
       color: 'from-yellow-500 to-gaming-warning',
-      href: '/games/slots'
-    },
-    {
-      id: 'arcade',
-      name: 'Arcade Games',
-      description: 'Fun and casual gaming experience',
-      icon: <CubeIcon className="h-8 w-8" />,
-      gameCount: 280,
-      color: 'from-purple-500 to-indigo-500',
-      href: '/games/arcade'
-    },
-    {
-      id: 'memory',
-      name: 'Memory Games',
-      description: 'Challenge your mind with brain training games',
-      icon: <PuzzlePieceIcon className="h-8 w-8" />,
-      gameCount: 12,
-      color: 'from-green-500 to-teal-500',
-      href: '/games/memory'
-    },
-    {
-      id: 'favorites',
-      name: 'Player Favorites',
-      description: 'Most loved games by our community',
-      icon: <HeartIcon className="h-8 w-8" />,
-      gameCount: 150,
-      color: 'from-pink-500 to-rose-500',
-      href: '/games/favorites'
+      href: '/games/tournament'
     }
   ];
 

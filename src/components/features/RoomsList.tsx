@@ -70,8 +70,9 @@ const RoomsList: React.FC<RoomsListProps> = memo(({
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim();
       filtered = filtered.filter(room => 
-        room.roomCode.toLowerCase().includes(query) ||
-        room.roomId.toLowerCase().includes(query)
+        (room.roomCode && room.roomCode.toLowerCase().includes(query)) ||
+        (room.roomId && room.roomId.toLowerCase().includes(query)) ||
+        (room.roomName && room.roomName.toLowerCase().includes(query))
       );
     }
 

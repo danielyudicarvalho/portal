@@ -13,12 +13,12 @@ const mockGames: Game[] = [
     description: 'Test your memory! Remember the colored circles and click on them when they turn white.',
     thumbnail: '/images/game-placeholder.svg',
     category: {
-      id: '4',
-      name: 'Memory Games',
-      slug: 'memory',
-      description: 'Brain training and memory games',
-      icon: '🧠',
-      order: 4,
+      id: '1',
+      name: 'Classic',
+      slug: 'classic',
+      description: 'Timeless games that never go out of style',
+      icon: '🎯',
+      order: 1,
       isActive: true
     },
     provider: 'In-House',
@@ -36,12 +36,12 @@ const mockGames: Game[] = [
     description: 'Grow your square to the perfect size and land it in the target area. Test your timing and precision!',
     thumbnail: '/images/game-placeholder.svg',
     category: {
-      id: '5',
-      name: 'Puzzle Games',
-      slug: 'puzzle',
-      description: 'Mind-bending puzzle and logic games',
-      icon: '🧩',
-      order: 5,
+      id: '1',
+      name: 'Classic',
+      slug: 'classic',
+      description: 'Timeless games that never go out of style',
+      icon: '🎯',
+      order: 1,
       isActive: true
     },
     provider: 'In-House',
@@ -59,12 +59,12 @@ const mockGames: Game[] = [
     description: 'A challenging puzzle game where you need to fill all the holes to complete each level.',
     thumbnail: '/images/game-placeholder.svg',
     category: {
-      id: '5',
-      name: 'Puzzle Games',
-      slug: 'puzzle',
-      description: 'Mind-bending puzzle and logic games',
-      icon: '🧩',
-      order: 5,
+      id: '1',
+      name: 'Classic',
+      slug: 'classic',
+      description: 'Timeless games that never go out of style',
+      icon: '🎯',
+      order: 1,
       isActive: true
     },
     provider: 'In-House',
@@ -82,12 +82,12 @@ const mockGames: Game[] = [
     description: 'A time-based puzzle game where you need to manage and synchronize different clocks.',
     thumbnail: '/images/game-placeholder.svg',
     category: {
-      id: '5',
-      name: 'Puzzle Games',
-      slug: 'puzzle',
-      description: 'Mind-bending puzzle and logic games',
-      icon: '🧩',
-      order: 5,
+      id: '1',
+      name: 'Classic',
+      slug: 'classic',
+      description: 'Timeless games that never go out of style',
+      icon: '🎯',
+      order: 1,
       isActive: true
     },
     provider: 'In-House',
@@ -105,12 +105,12 @@ const mockGames: Game[] = [
     description: 'A numbers-based puzzle game that challenges your mathematical thinking and logic skills.',
     thumbnail: '/images/game-placeholder.svg',
     category: {
-      id: '5',
-      name: 'Puzzle Games',
-      slug: 'puzzle',
-      description: 'Mind-bending puzzle and logic games',
-      icon: '🧩',
-      order: 5,
+      id: '1',
+      name: 'Classic',
+      slug: 'classic',
+      description: 'Timeless games that never go out of style',
+      icon: '🎯',
+      order: 1,
       isActive: true
     },
     provider: 'In-House',
@@ -128,12 +128,12 @@ const mockGames: Game[] = [
     description: 'Navigate through circular paths in this challenging arcade-style game. Test your reflexes and timing!',
     thumbnail: '/images/game-placeholder.svg',
     category: {
-      id: '6',
-      name: 'Arcade Games',
-      slug: 'arcade',
-      description: 'Fast-paced arcade games for quick thrills',
-      icon: '🕹️',
-      order: 6,
+      id: '3',
+      name: 'Survival',
+      slug: 'survival',
+      description: 'Test your endurance and survival skills',
+      icon: '🛡️',
+      order: 3,
       isActive: true
     },
     provider: 'In-House',
@@ -151,12 +151,12 @@ const mockGames: Game[] = [
     description: 'Jump from box to box in this exciting platformer game. Test your timing and precision!',
     thumbnail: '/images/game-placeholder.svg',
     category: {
-      id: '6',
-      name: 'Arcade Games',
-      slug: 'arcade',
-      description: 'Fast-paced arcade games for quick thrills',
-      icon: '🕹️',
-      order: 6,
+      id: '1',
+      name: 'Classic',
+      slug: 'classic',
+      description: 'Timeless games that never go out of style',
+      icon: '🎯',
+      order: 1,
       isActive: true
     },
     provider: 'In-House',
@@ -174,12 +174,12 @@ const mockGames: Game[] = [
     description: 'An explosive dot-matching game with chain reactions and colorful effects!',
     thumbnail: '/images/game-placeholder.svg',
     category: {
-      id: '6',
-      name: 'Arcade Games',
-      slug: 'arcade',
-      description: 'Fast-paced arcade games for quick thrills',
-      icon: '🕹️',
-      order: 6,
+      id: '1',
+      name: 'Classic',
+      slug: 'classic',
+      description: 'Timeless games that never go out of style',
+      icon: '🎯',
+      order: 1,
       isActive: true
     },
     provider: 'In-House',
@@ -197,12 +197,12 @@ const mockGames: Game[] = [
     description: 'Jump as high as you can in this addictive vertical platformer! Avoid obstacles and reach new heights.',
     thumbnail: '/images/game-placeholder.svg',
     category: {
-      id: '6',
-      name: 'Arcade Games',
-      slug: 'arcade',
-      description: 'Fast-paced arcade games for quick thrills',
-      icon: '🕹️',
-      order: 6,
+      id: '3',
+      name: 'Survival',
+      slug: 'survival',
+      description: 'Test your endurance and survival skills',
+      icon: '🛡️',
+      order: 3,
       isActive: true
     },
     provider: 'In-House',
@@ -220,12 +220,12 @@ const mockGames: Game[] = [
     description: 'Real-time multiplayer tank battle with rock-paper-scissors mechanics! Each tank type has unique strengths and weaknesses.',
     thumbnail: '/images/game-placeholder.svg',
     category: {
-      id: '7',
-      name: 'Multiplayer Games',
-      slug: 'multiplayer',
-      description: 'Real-time multiplayer games for competitive fun',
+      id: '2',
+      name: 'Team',
+      slug: 'team',
+      description: 'Cooperative and competitive team-based games',
       icon: '👥',
-      order: 7,
+      order: 2,
       isActive: true
     },
     provider: 'In-House',
@@ -243,12 +243,12 @@ const mockGames: Game[] = [
     description: 'Real-time multiplayer snake game inspired by Slither.io! Battle up to 8 players with special abilities, shooting, armor, and dangerous poison food.',
     thumbnail: '/images/game-placeholder.svg',
     category: {
-      id: '7',
-      name: 'Multiplayer Games',
-      slug: 'multiplayer',
-      description: 'Real-time multiplayer games for competitive fun',
-      icon: '👥',
-      order: 7,
+      id: '3',
+      name: 'Survival',
+      slug: 'survival',
+      description: 'Test your endurance and survival skills',
+      icon: '🛡️',
+      order: 3,
       isActive: true
     },
     provider: 'In-House',
@@ -266,12 +266,12 @@ const mockGames: Game[] = [
     description: 'Turn-based multiplayer platformer! At least 5 players take turns attempting each level. Only those who complete a level can advance to the next one.',
     thumbnail: '/images/game-placeholder.svg',
     category: {
-      id: '7',
-      name: 'Multiplayer Games',
-      slug: 'multiplayer',
-      description: 'Real-time multiplayer games for competitive fun',
-      icon: '👥',
-      order: 7,
+      id: '4',
+      name: 'Tournament',
+      slug: 'tournament',
+      description: 'Competitive tournaments and ranked matches',
+      icon: '🏆',
+      order: 4,
       isActive: true
     },
     provider: 'In-House',
@@ -282,210 +282,51 @@ const mockGames: Game[] = [
     updatedAt: new Date(),
     tags: ['multiplayer', 'platformer', 'turn-based', 'competitive']
   },
-  {
-    id: '1',
-    title: 'Mega Fortune Slots',
-    slug: 'mega-fortune-slots',
-    description: 'Progressive jackpot slot with luxury theme and massive payouts',
-    thumbnail: '/api/placeholder/300/200',
-    category: {
-      id: '1',
-      name: 'Slots',
-      slug: 'slots',
-      description: 'Slot machine games',
-      icon: '🎰',
-      order: 1,
-      isActive: true
-    },
-    provider: 'NetEnt',
-    isActive: true,
-    isFeatured: true,
-    popularity: 95,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    tags: ['progressive', 'jackpot']
-  },
-  {
-    id: '2',
-    title: 'Live Blackjack Pro',
-    slug: 'live-blackjack-pro',
-    description: 'Professional live blackjack with real dealers and HD streaming',
-    thumbnail: '/api/placeholder/300/200',
-    category: {
-      id: '2',
-      name: 'Live Casino',
-      slug: 'live-casino',
-      description: 'Live dealer games',
-      icon: '🃏',
-      order: 2,
-      isActive: true
-    },
-    provider: 'Evolution Gaming',
-    isActive: true,
-    isFeatured: false,
-    popularity: 88,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    tags: ['live', 'cards']
-  },
-  {
-    id: '3',
-    title: 'Football Champions',
-    slug: 'football-champions',
-    description: 'Sports-themed slot with championship bonuses and free spins',
-    thumbnail: '/api/placeholder/300/200',
-    category: {
-      id: '3',
-      name: 'Sports',
-      slug: 'sports',
-      description: 'Sports betting and games',
-      icon: '⚽',
-      order: 3,
-      isActive: true
-    },
-    provider: 'Pragmatic Play',
-    isActive: true,
-    isFeatured: false,
-    popularity: 82,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    tags: ['sports', 'football']
-  },
-  {
-    id: '4',
-    title: 'Dragon\'s Gold',
-    slug: 'dragons-gold',
-    description: 'Asian-themed adventure with expanding wilds and multipliers',
-    thumbnail: '/api/placeholder/300/200',
-    category: {
-      id: '1',
-      name: 'Slots',
-      slug: 'slots',
-      description: 'Slot machine games',
-      icon: '🎰',
-      order: 1,
-      isActive: true
-    },
-    provider: 'Red Tiger',
-    isActive: true,
-    isFeatured: true,
-    popularity: 79,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    tags: ['asian', 'dragons']
-  },
-  {
-    id: '5',
-    title: 'Roulette Royal',
-    slug: 'roulette-royal',
-    description: 'Classic European roulette with premium graphics',
-    thumbnail: '/api/placeholder/300/200',
-    category: {
-      id: '2',
-      name: 'Live Casino',
-      slug: 'live-casino',
-      description: 'Live dealer games',
-      icon: '🃏',
-      order: 2,
-      isActive: true
-    },
-    provider: 'Evolution Gaming',
-    isActive: true,
-    isFeatured: false,
-    popularity: 85,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    tags: ['roulette', 'classic']
-  },
-  {
-    id: '6',
-    title: 'Basketball Slam',
-    slug: 'basketball-slam',
-    description: 'High-energy basketball slot with slam dunk bonuses',
-    thumbnail: '/api/placeholder/300/200',
-    category: {
-      id: '3',
-      name: 'Sports',
-      slug: 'sports',
-      description: 'Sports betting and games',
-      icon: '⚽',
-      order: 3,
-      isActive: true
-    },
-    provider: 'Pragmatic Play',
-    isActive: true,
-    isFeatured: false,
-    popularity: 77,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    tags: ['sports', 'basketball']
-  }
+
 ];
 
-const slotsCategory: GameCategoryType = {
+const classicGamesCategory: GameCategoryType = {
   id: '1',
-  name: 'Slot Games',
-  slug: 'slots',
-  description: 'Exciting slot machine games with various themes and features',
-  icon: '🎰',
+  name: 'Classic',
+  slug: 'classic',
+  description: 'Timeless games that never go out of style',
+  icon: '🎯',
   order: 1,
   isActive: true,
-  games: mockGames.filter(game => game.category.slug === 'slots')
+  games: mockGames.filter(game => game.category.slug === 'classic')
 };
 
-const liveCasinoCategory: GameCategoryType = {
+const teamGamesCategory: GameCategoryType = {
   id: '2',
-  name: 'Live Casino',
-  slug: 'live-casino',
-  description: 'Real dealers, real-time action, authentic casino experience',
-  icon: '🃏',
+  name: 'Team',
+  slug: 'team',
+  description: 'Cooperative and competitive team-based games',
+  icon: '👥',
   order: 2,
   isActive: true,
-  games: mockGames.filter(game => game.category.slug === 'live-casino')
+  games: mockGames.filter(game => game.category.slug === 'team')
 };
 
-const memoryGamesCategory: GameCategoryType = {
+const survivalGamesCategory: GameCategoryType = {
+  id: '3',
+  name: 'Survival',
+  slug: 'survival',
+  description: 'Test your endurance and survival skills',
+  icon: '🛡️',
+  order: 3,
+  isActive: true,
+  games: mockGames.filter(game => game.category.slug === 'survival')
+};
+
+const tournamentGamesCategory: GameCategoryType = {
   id: '4',
-  name: 'Memory Games',
-  slug: 'memory',
-  description: 'Challenge your mind with brain training and memory games',
-  icon: '🧠',
+  name: 'Tournament',
+  slug: 'tournament',
+  description: 'Competitive tournaments and ranked matches',
+  icon: '🏆',
   order: 4,
   isActive: true,
-  games: mockGames.filter(game => game.category.slug === 'memory')
-};
-
-const puzzleGamesCategory: GameCategoryType = {
-  id: '5',
-  name: 'Puzzle Games',
-  slug: 'puzzle',
-  description: 'Mind-bending puzzle and logic games',
-  icon: '🧩',
-  order: 5,
-  isActive: true,
-  games: mockGames.filter(game => game.category.slug === 'puzzle')
-};
-
-const arcadeGamesCategory: GameCategoryType = {
-  id: '6',
-  name: 'Arcade Games',
-  slug: 'arcade',
-  description: 'Fast-paced arcade games for quick thrills',
-  icon: '🕹️',
-  order: 6,
-  isActive: true,
-  games: mockGames.filter(game => game.category.slug === 'arcade')
-};
-
-const multiplayerGamesCategory: GameCategoryType = {
-  id: '7',
-  name: 'Multiplayer Games',
-  slug: 'multiplayer',
-  description: 'Real-time multiplayer games for competitive fun',
-  icon: '👥',
-  order: 7,
-  isActive: true,
-  games: mockGames.filter(game => game.category.slug === 'multiplayer')
+  games: mockGames.filter(game => game.category.slug === 'tournament')
 };
 
 export default function GamesPage() {
@@ -529,25 +370,25 @@ export default function GamesPage() {
           </p>
         </div>
 
-        {/* Multiplayer Games Highlight */}
+        {/* Team Games Highlight */}
         <section className="mb-16">
           <div className="bg-gradient-to-r from-gaming-accent/20 to-gaming-secondary/20 rounded-lg p-8 text-center">
             <div className="flex items-center justify-center mb-4">
               <span className="text-4xl mr-3">👥</span>
               <h2 className="text-3xl font-gaming font-bold text-white">
-                Multiplayer Games
+                Team Games
               </h2>
             </div>
             <p className="text-gray-300 mb-6 max-w-2xl mx-auto">
-              Battle other players in real-time! Experience competitive gaming with friends and players from around the world.
+              Join forces with other players or compete in team-based challenges! Experience cooperative and competitive gaming.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <a
-                href="/games/multiplayer"
+                href="/games/team"
                 className="inline-flex items-center px-6 py-3 bg-gaming-accent hover:bg-gaming-accent/80 text-white font-semibold rounded-lg transition-colors"
               >
                 <span className="mr-2">⚔️</span>
-                Browse Multiplayer Games
+                Browse Team Games
               </a>
               <a
                 href="/games/the-battle"
@@ -580,7 +421,7 @@ export default function GamesPage() {
 
         {/* Category Sections */}
         <GameCategory
-          category={slotsCategory}
+          category={classicGamesCategory}
           onGameClick={handleGameClick}
           onToggleFavorite={handleToggleFavorite}
           onViewAllClick={handleViewAllClick}
@@ -589,7 +430,7 @@ export default function GamesPage() {
         />
 
         <GameCategory
-          category={liveCasinoCategory}
+          category={teamGamesCategory}
           onGameClick={handleGameClick}
           onToggleFavorite={handleToggleFavorite}
           onViewAllClick={handleViewAllClick}
@@ -598,7 +439,7 @@ export default function GamesPage() {
         />
 
         <GameCategory
-          category={memoryGamesCategory}
+          category={survivalGamesCategory}
           onGameClick={handleGameClick}
           onToggleFavorite={handleToggleFavorite}
           onViewAllClick={handleViewAllClick}
@@ -607,25 +448,7 @@ export default function GamesPage() {
         />
 
         <GameCategory
-          category={puzzleGamesCategory}
-          onGameClick={handleGameClick}
-          onToggleFavorite={handleToggleFavorite}
-          onViewAllClick={handleViewAllClick}
-          favoriteGameIds={favoriteGameIds}
-          maxGamesShown={4}
-        />
-
-        <GameCategory
-          category={arcadeGamesCategory}
-          onGameClick={handleGameClick}
-          onToggleFavorite={handleToggleFavorite}
-          onViewAllClick={handleViewAllClick}
-          favoriteGameIds={favoriteGameIds}
-          maxGamesShown={4}
-        />
-
-        <GameCategory
-          category={multiplayerGamesCategory}
+          category={tournamentGamesCategory}
           onGameClick={handleGameClick}
           onToggleFavorite={handleToggleFavorite}
           onViewAllClick={handleViewAllClick}
