@@ -364,8 +364,27 @@ export function RoomProvider({ children, serverUrl }: RoomProviderProps) {
       // Track message performance
       trackMessagePerformance();
       
+      console.log('🔍 DEBUG: handleRoomsUpdated called');
+      console.log('  - Total rooms received:', rooms.length);
+      console.log('  - Selected game ID:', state.selectedGameId);
+      
+      rooms.forEach(room => {
+        console.log(`  - Room: ${room.roomCode}, Name: "${room.roomName}", Game: ${room.gameId}`);
+      });
+      
+      // Scope rooms to the currently selected game to avoid mixing
+      // different games (or the lobby) into this view.
+      const scopedRooms = state.selectedGameId
+        ? rooms.filter(r => r.gameId === state.selectedGameId)
+        : rooms;
+
+      console.log('  - Scoped rooms after filtering:', scopedRooms.length);
+      scopedRooms.forEach(room => {
+        console.log(`    - Scoped Room: ${room.roomCode}, Name: "${room.roomName}"`);
+      });
+
       // Use debounced update to prevent excessive re-renders
-      debouncedRoomUpdate(rooms, statistics);
+      debouncedRoomUpdate(scopedRooms, statistics);
     };
 
     const handleRoomStateChanged = (data: { roomId: string; newState: ActiveRoom['state']; [key: string]: any }) => {
@@ -382,11 +401,12 @@ export function RoomProvider({ children, serverUrl }: RoomProviderProps) {
       });
     };
 
-    const handleRoomCreated = ({ roomId, roomCode }: { roomId: string; roomCode: string }) => {
+    const handleRoomCreated = ({ roomId, roomCode, gameId }: { roomId: string; roomCode: string; gameId?: string }) => {
       // Get the creation options from the temporary storage
       const creationOptions = (roomService as any)._lastCreationOptions as RoomCreationOptions;
       const gameInfo = state.gameInfo;
-      
+
+      // Keep existing behavior (sharing modal, etc.)
       dispatch({ 
         type: 'ROOM_CREATED', 
         payload: { 
@@ -396,7 +416,32 @@ export function RoomProvider({ children, serverUrl }: RoomProviderProps) {
           maxPlayers: creationOptions?.maxPlayers || gameInfo?.maxPlayers || 8
         } 
       });
-      
+
+      // Also optimistically insert the new room into the local list so it
+      // appears immediately in the Rooms view, without waiting for a
+      // subsequent rooms_updated broadcast from the server.
+      const newRoom = {
+        roomId,
+        roomCode,
+        roomName: creationOptions?.roomName || '',
+        gameId: gameId || state.selectedGameId || (gameInfo?.id ?? ''),
+        playerCount: 0,
+        maxPlayers: creationOptions?.maxPlayers || gameInfo?.maxPlayers || 8,
+        state: 'LOBBY' as const,
+        isPrivate: creationOptions?.isPrivate || false,
+        createdAt: Date.now(),
+      };
+
+      // Only add if it matches the selected game filter (to avoid polluting
+      // other game tabs) and we don't already have it.
+      const shouldShow = !state.selectedGameId || newRoom.gameId === state.selectedGameId;
+      const alreadyExists = state.rooms.some(r => r.roomId === roomId);
+      if (shouldShow && !alreadyExists) {
+        const updatedRooms = [newRoom, ...state.rooms];
+        const updatedStats = calculateStatistics(updatedRooms);
+        dispatch({ type: 'SET_ROOMS', payload: { rooms: updatedRooms, statistics: updatedStats } });
+      }
+
       // Clean up temporary storage
       delete (roomService as any)._lastCreationOptions;
     };
@@ -469,6 +514,11 @@ export function RoomProvider({ children, serverUrl }: RoomProviderProps) {
   };
 
   const refreshRooms = async (): Promise<void> => {
+    console.log('🔍 DEBUG: refreshRooms called');
+    console.log('🔍 DEBUG: selectedGameId:', state.selectedGameId);
+    console.log('🔍 DEBUG: isConnected:', state.isConnected);
+    console.log('🔍 DEBUG: connectionStatus:', state.connectionStatus);
+    
     if (!state.selectedGameId) {
       console.log('⚠️ No selected game ID, skipping room refresh');
       return;
@@ -481,6 +531,7 @@ export function RoomProvider({ children, serverUrl }: RoomProviderProps) {
       
       const rooms = await roomService.getActiveRooms(state.selectedGameId);
       console.log('📡 Received rooms:', rooms.length);
+      console.log('📡 Room details:', rooms.map(r => ({ code: r.roomCode, name: r.roomName, game: r.gameId })));
       const statistics = calculateStatistics(rooms);
       console.log('📊 Calculated statistics:', statistics);
       
@@ -678,7 +729,8 @@ export function RoomProvider({ children, serverUrl }: RoomProviderProps) {
           LOBBY: rooms.filter(room => room.state === 'LOBBY').length,
           COUNTDOWN: rooms.filter(room => room.state === 'COUNTDOWN').length,
           PLAYING: rooms.filter(room => room.state === 'PLAYING').length,
-          RESULTS: rooms.filter(room => room.state === 'RESULTS').length
+          RESULTS: rooms.filter(room => room.state === 'RESULTS').length,
+          RESET: rooms.filter(room => room.state === 'RESET').length
         }
       };
     };

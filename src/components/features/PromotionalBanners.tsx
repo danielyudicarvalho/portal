@@ -37,8 +37,8 @@ const PromotionalBanners: React.FC<PromotionalBannersProps> = ({ banners }) => {
     {
       id: 'welcome-bonus',
       title: 'Welcome Bonus',
-      subtitle: '100% Match up to $500',
-      description: 'Double your first deposit and get 50 free spins on our most popular slots!',
+      subtitle: 'Join the Gaming Community',
+      description: 'Get exclusive access to tournaments and special events when you join our gaming platform!',
       ctaText: 'Claim Now',
       ctaAction: () => console.log('Claim welcome bonus'),
       backgroundGradient: 'from-gaming-accent via-orange-500 to-red-500',

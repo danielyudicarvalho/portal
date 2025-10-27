@@ -77,16 +77,22 @@ Mobile-specific navigation panel that slides in from the left.
 
 ### Main Navigation
 - Home
-- Casino Games
-  - Slots
-  - Table Games
-  - Card Games
-  - Roulette
-- Sports Betting
-  - Football
-  - Basketball
-  - Tennis
-  - Esports
+- Classic Games
+  - Puzzle Games
+  - Memory Games
+  - Arcade Games
+- Team Games
+  - Cooperative
+  - Competitive
+  - Battle Arena
+- Survival Games
+  - Endless Runner
+  - Battle Royale
+  - Last Stand
+- Tournament
+  - Ranked Matches
+  - Championships
+  - Leaderboards
 - Live Games
 - Promotions
 
@@ -96,7 +102,7 @@ Mobile-specific navigation panel that slides in from the left.
 - New Releases
 
 ### Footer Links
-- Games (Casino, Sports, Live, New)
+- Games (Classic, Team, Survival, Tournament)
 - Support (Help, Contact, FAQ, Chat)
 - Company (About, Careers, Press, Blog)
 - Legal (Terms, Privacy, Responsible Gaming, Licenses)

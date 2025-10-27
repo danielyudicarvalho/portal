@@ -18,8 +18,8 @@ jest.mock('@/components/features', () => ({
   ),
   GameCategories: ({ onCategoryClick }: { onCategoryClick: (category: { id: string; name: string }) => void }) => (
     <div data-testid="game-categories">
-      <button onClick={() => onCategoryClick({ id: 'casino', name: 'Casino' })}>
-        Casino Games
+      <button onClick={() => onCategoryClick({ id: 'classic', name: 'Classic' })}>
+        Classic Games
       </button>
     </div>
   ),
@@ -79,7 +79,7 @@ describe('Home Page', () => {
     
     render(<Home />);
     
-    const categoryButton = screen.getByText('Casino Games');
+    const categoryButton = screen.getByText('Classic Games');
     fireEvent.click(categoryButton);
     
     expect(consoleSpy).toHaveBeenCalledWith('Category clicked:', { id: 'casino', name: 'Casino' });

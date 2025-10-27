@@ -1,15 +1,14 @@
-const { Server } = require('colyseus');
-const { monitor } = require('@colyseus/monitor');
-// Redis Presence / Driver (distributed rooms + presence)
-let RedisPresence, RedisDriver, IORedis;
+const { Server, RedisPresence } = require('colyseus');
+// RedisDriver is provided by a separate package on Colyseus 0.15.
+// We'll try to require it if available and fall back gracefully otherwise.
+let RedisDriver = null;
 try {
-  ({ RedisPresence } = require('@colyseus/redis-presence'));
-  ({ RedisDriver } = require('@colyseus/redis-driver'));
-  IORedis = require('ioredis');
-} catch (err) {
-  // Packages may not be installed in some environments (dev fallback)
-  console.warn('Redis presence/driver not available yet. Install @colyseus/redis-presence and @colyseus/redis-driver to enable.');
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  RedisDriver = require('@colyseus/redis-driver').RedisDriver;
+} catch (_) {
+  // optional dependency; presence alone still enables cross-process pub/sub
 }
+const { monitor } = require('@colyseus/monitor');
 const { createServer } = require('http');
 const express = require('express');
 const cors = require('cors');
@@ -36,7 +35,7 @@ class MultiplayerServer {
   setupMiddleware() {
     // CORS configuration with security headers
     const corsOptions = {
-      origin: process.env.NODE_ENV === 'production' 
+      origin: process.env.NODE_ENV === 'production'
         ? [process.env.FRONTEND_URL, process.env.ALLOWED_ORIGINS?.split(',')].filter(Boolean).flat()
         : true, // Allow all origins in development
       credentials: true,
@@ -52,11 +51,11 @@ class MultiplayerServer {
       res.setHeader('X-Frame-Options', 'DENY');
       res.setHeader('X-XSS-Protection', '1; mode=block');
       res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-      
+
       if (process.env.NODE_ENV === 'production') {
         res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
       }
-      
+
       next();
     });
 
@@ -87,43 +86,42 @@ class MultiplayerServer {
   }
 
   initializeServer() {
-    // Resolve Redis connection options (optional)
-    const getRedisUrl = () => {
-      if (process.env.REDIS_URL) return process.env.REDIS_URL;
-      const host = process.env.REDIS_HOST || '127.0.0.1';
-      const port = process.env.REDIS_PORT || '6379';
-      const password = process.env.REDIS_PASSWORD ? `:${process.env.REDIS_PASSWORD}@` : '';
-      return `redis://${password}${host}:${port}`;
-    };
-
-    // Optionally configure Redis Presence + Driver if available
-    let presenceInstance;
-    let driverInstance;
-    if (RedisPresence && RedisDriver) {
-      try {
-        const redisUrl = getRedisUrl();
-        // Pass the URL/options directly to both Presence and Driver
-        // (RedisDriver expects connection options, not a prebuilt client)
-        presenceInstance = new RedisPresence(redisUrl);
-        driverInstance = new RedisDriver(redisUrl);
-
-        console.log('📦 Redis configured for Presence and Driver:', redisUrl);
-      } catch (e) {
-        console.warn('⚠️ Failed to initialize Redis Presence/Driver. Falling back to in-memory.', e.message);
-      }
-    }
-
     // Initialize Colyseus server with WebSocket transport
-    this.gameServer = new Server({
+    // If REDIS_URL is provided, wire Redis Presence/Driver for multi-process.
+
+    const redisOptions = this.getRedisOptionsFromEnv();
+
+    const serverOptions = {
       server: this.server,
       express: this.app,
-      pingInterval: 6000,
-      pingMaxRetries: 3,
+      pingInterval: 10000, // Reduced ping frequency
+      pingMaxRetries: 2,   // Fewer retries
       gracefullyShutdown: true,
-      // Enable Redis-backed presence/driver when available
-      ...(presenceInstance ? { presence: presenceInstance } : {}),
-      ...(driverInstance ? { driver: driverInstance } : {}),
-    });
+    };
+
+    if (redisOptions) {
+      try {
+        serverOptions.presence = new RedisPresence(redisOptions);
+        console.log(`🧩 RedisPresence enabled at ${redisOptions.host}:${redisOptions.port}${typeof redisOptions.db === 'number' ? '/' + redisOptions.db : ''}`);
+      } catch (e) {
+        console.warn('⚠️ Failed to initialize RedisPresence, continuing with LocalPresence:', e.message);
+      }
+
+      if (RedisDriver) {
+        try {
+          serverOptions.driver = new RedisDriver(redisOptions);
+          console.log('🧩 RedisDriver enabled for shared room registry');
+        } catch (e) {
+          console.warn('⚠️ Failed to initialize RedisDriver, continuing without shared driver:', e.message);
+        }
+      } else {
+        console.warn('ℹ️ @colyseus/redis-driver not installed; using presence only.');
+      }
+    } else {
+      console.log('ℹ️ REDIS_URL not set; using LocalPresence (single-process).');
+    }
+
+    this.gameServer = new Server(serverOptions);
 
     // Add Colyseus monitor for development and staging
     if (process.env.NODE_ENV !== 'production') {
@@ -134,6 +132,38 @@ class MultiplayerServer {
     this.gameServer.onShutdown(() => {
       console.log('🔄 Multiplayer server shutting down gracefully...');
     });
+  }
+
+  // Parse REDIS_URL (redis://[:password@]host:port[/db]) into options that
+  // both RedisPresence and RedisDriver understand.
+  getRedisOptionsFromEnv() {
+    const url = process.env.REDIS_URL;
+    if (!url) return null;
+
+    try {
+      const parsed = new URL(url);
+      if (parsed.protocol !== 'redis:') return null;
+
+      const opts = {
+        host: parsed.hostname || '127.0.0.1',
+        port: parsed.port ? parseInt(parsed.port, 10) : 6379,
+      };
+
+      if (parsed.password) {
+        opts.password = parsed.password;
+      }
+
+      // pathname like '/0'
+      if (parsed.pathname && parsed.pathname.length > 1) {
+        const db = parseInt(parsed.pathname.slice(1), 10);
+        if (!Number.isNaN(db)) opts.db = db;
+      }
+
+      return opts;
+    } catch (e) {
+      console.warn('⚠️ Could not parse REDIS_URL, continuing without Redis:', e.message);
+      return null;
+    }
   }
 
   registerRooms() {
@@ -164,30 +194,30 @@ class MultiplayerServer {
       const uptime = Date.now() - this.startTime;
       const memoryUsage = process.memoryUsage();
       const rooms = Array.from(this.gameServer?.rooms?.values() || []);
-      
+
       // Calculate health metrics
       const totalConnections = rooms.reduce((sum, room) => sum + room.clients.length, 0);
       const memoryUsagePercent = Math.round((memoryUsage.heapUsed / memoryUsage.heapTotal) * 100);
-      
+
       // Determine health status
       let healthStatus = 'healthy';
       const healthIssues = [];
-      
+
       if (memoryUsagePercent > 90) {
         healthStatus = 'warning';
         healthIssues.push('High memory usage');
       }
-      
+
       if (totalConnections > 1000) {
         healthStatus = 'warning';
         healthIssues.push('High connection count');
       }
-      
+
       if (rooms.length > 500) {
         healthStatus = 'warning';
         healthIssues.push('High room count');
       }
-      
+
       const response = {
         status: healthStatus,
         timestamp: Date.now(),
@@ -219,23 +249,23 @@ class MultiplayerServer {
         },
         issues: healthIssues
       };
-      
+
       // Update peak connections
       if (totalConnections > (this.peakConnections || 0)) {
         this.peakConnections = totalConnections;
       }
-      
+
       // Set appropriate HTTP status based on health
-      const statusCode = healthStatus === 'healthy' ? 200 : 
-                        healthStatus === 'warning' ? 200 : 503;
-      
+      const statusCode = healthStatus === 'healthy' ? 200 :
+        healthStatus === 'warning' ? 200 : 503;
+
       res.status(statusCode).json(response);
     });
 
     // Detailed server status endpoint
     this.app.get('/api/status', (req, res) => {
       const rooms = Array.from(this.gameServer?.rooms?.values() || []);
-      
+
       res.json({
         server: {
           status: 'running',
@@ -289,7 +319,7 @@ class MultiplayerServer {
     this.app.get('/api/metrics', (req, res) => {
       const rooms = Array.from(this.gameServer?.rooms?.values() || []);
       const totalConnections = rooms.reduce((sum, room) => sum + room.clients.length, 0);
-      
+
       // Get lobby monitoring data if available
       let lobbyData = null;
       const lobbyRooms = rooms.filter(room => room.roomName === 'lobby');
@@ -300,7 +330,7 @@ class MultiplayerServer {
           console.warn('Could not get lobby monitoring data:', error.message);
         }
       }
-      
+
       const metrics = {
         timestamp: Date.now(),
         uptime: Date.now() - this.startTime,
@@ -334,12 +364,12 @@ class MultiplayerServer {
         },
         lobby: lobbyData
       };
-      
+
       // Update peak connections
       if (totalConnections > (this.peakConnections || 0)) {
         this.peakConnections = totalConnections;
       }
-      
+
       res.json(metrics);
     });
 
@@ -347,7 +377,7 @@ class MultiplayerServer {
     this.app.get('/api/rooms/monitor', (req, res) => {
       const rooms = Array.from(this.gameServer?.rooms?.values() || []);
       const gameRooms = rooms.filter(room => room.roomName !== 'lobby');
-      
+
       const monitoringData = {
         timestamp: Date.now(),
         summary: {
@@ -370,7 +400,7 @@ class MultiplayerServer {
         })).sort((a, b) => b.playerCount - a.playerCount), // Sort by player count
         alerts: this.generateRoomAlerts(gameRooms)
       };
-      
+
       res.json(monitoringData);
     });
 
@@ -423,14 +453,14 @@ class MultiplayerServer {
     const gameRooms = rooms.filter(room => room.roomName !== 'lobby');
     const totalCapacity = gameRooms.reduce((sum, room) => sum + room.maxClients, 0);
     const totalPlayers = gameRooms.reduce((sum, room) => sum + room.clients.length, 0);
-    
+
     return {
       totalCapacity,
       totalPlayers,
       utilizationPercent: totalCapacity > 0 ? Math.round((totalPlayers / totalCapacity) * 100) : 0,
       fullRooms: gameRooms.filter(room => room.clients.length >= room.maxClients).length,
       emptyRooms: gameRooms.filter(room => room.clients.length === 0).length,
-      nearFullRooms: gameRooms.filter(room => 
+      nearFullRooms: gameRooms.filter(room =>
         room.clients.length >= room.maxClients * 0.8 && room.clients.length < room.maxClients
       ).length
     };
@@ -456,7 +486,7 @@ class MultiplayerServer {
         const delta = process.hrtime.bigint() - start;
         this.eventLoopDelay = Number(delta) / 1000000; // Convert to milliseconds
       });
-      
+
       return {
         delay: this.eventLoopDelay || 0,
         utilization: process.cpuUsage().user / 1000000 // Convert to seconds
@@ -469,7 +499,7 @@ class MultiplayerServer {
   generateRoomAlerts(rooms) {
     const alerts = [];
     const now = Date.now();
-    
+
     rooms.forEach(room => {
       // Alert for rooms that have been empty for too long
       if (room.clients.length === 0) {
@@ -485,7 +515,7 @@ class MultiplayerServer {
           });
         }
       }
-      
+
       // Alert for rooms at capacity
       if (room.clients.length >= room.maxClients) {
         alerts.push({
@@ -497,7 +527,7 @@ class MultiplayerServer {
           timestamp: now
         });
       }
-      
+
       // Alert for rooms stuck in non-lobby states for too long
       const state = room.metadata?.state;
       const lastUpdate = room.metadata?.lastUpdate;
@@ -512,7 +542,7 @@ class MultiplayerServer {
         });
       }
     });
-    
+
     return alerts;
   }
 
@@ -530,7 +560,7 @@ class MultiplayerServer {
 
   listen(port) {
     const PORT = port || process.env.MULTIPLAYER_PORT || 3002;
-    
+
     this.gameServer.listen(PORT, () => {
       console.log('🚀 Multiplayer Server Started');
       console.log('================================');
@@ -538,11 +568,11 @@ class MultiplayerServer {
       console.log(`🌐 WebSocket endpoint: ws://localhost:${PORT}`);
       console.log(`📊 Health check: http://localhost:${PORT}/health`);
       console.log(`📈 Status API: http://localhost:${PORT}/api/status`);
-      
+
       if (process.env.NODE_ENV !== 'production') {
         console.log(`🔍 Monitor: http://localhost:${PORT}/colyseus`);
       }
-      
+
       console.log(`🔧 Environment: ${process.env.NODE_ENV || 'development'}`);
       console.log('================================');
     });
@@ -554,7 +584,7 @@ class MultiplayerServer {
 
   shutdown() {
     console.log('🔄 Received shutdown signal, closing server gracefully...');
-    
+
     this.gameServer.gracefullyShutdown(true).then(() => {
       console.log('✅ Server shut down successfully');
       process.exit(0);

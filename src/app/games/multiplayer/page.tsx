@@ -193,8 +193,8 @@ export default function MultiplayerGamesPage() {
               <p className="text-gray-400 text-sm">Coming Soon</p>
             </div>
             <div className="bg-gaming-dark border border-gaming-accent/20 rounded-lg p-6 text-center hover:border-gaming-accent/40 transition-colors opacity-50">
-              <div className="text-4xl mb-4">⚽</div>
-              <h3 className="text-lg font-semibold text-white mb-2">Sports Games</h3>
+              <div className="text-4xl mb-4">🏆</div>
+              <h3 className="text-lg font-semibold text-white mb-2">Tournament Games</h3>
               <p className="text-gray-400 text-sm">Coming Soon</p>
             </div>
           </div>
