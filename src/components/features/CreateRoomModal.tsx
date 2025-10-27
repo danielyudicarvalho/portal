@@ -88,11 +88,10 @@ const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
   const validateForm = (): boolean => {
     const errors: Record<string, string> = {};
 
-    // Validate room name (optional but if provided, must be valid)
+    // Validate room name (optional for debugging)
     if (roomName.trim() && roomName.trim().length < 3) {
       errors.roomName = 'Room name must be at least 3 characters';
-    }
-    if (roomName.trim() && roomName.trim().length > 30) {
+    } else if (roomName.trim().length > 30) {
       errors.roomName = 'Room name must be less than 30 characters';
     }
 
@@ -141,7 +140,7 @@ const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
       isPrivate,
       maxPlayers,
       gameSettings,
-      roomName: roomName.trim() || undefined
+      roomName: roomName.trim() || `${gameInfo.name} Room`
     };
     
     try {
@@ -283,17 +282,17 @@ const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
           </p>
         </div>
 
-        {/* Room Name (Optional) */}
+        {/* Room Name (Required) */}
         <div className="space-y-2">
           <Input
-            label="Room Name (Optional)"
+            label="Room Name"
             type="text"
             value={roomName}
             onChange={(e) => setRoomName(e.target.value)}
             placeholder={`${gameInfo.name} Room`}
             disabled={isCreating}
             error={validationErrors.roomName}
-            helperText="Give your room a custom name to help friends identify it"
+            helperText={validationErrors.roomName ? undefined : 'Give your room a custom name to help friends identify it (optional)'}
             maxLength={30}
           />
         </div>

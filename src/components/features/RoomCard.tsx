@@ -202,11 +202,18 @@ const RoomCard: React.FC<RoomCardProps> = memo(({
         {/* Room Header */}
         <div className="flex items-start justify-between mb-3">
           <div className="flex-1 min-w-0">
-            {/* Room Code */}
+            {/* Room Name and Code */}
             <div className="flex items-center gap-2 mb-1">
-              <h3 className="font-mono font-bold text-base sm:text-lg text-white tracking-wider">
-                {room.roomCode}
+              <h3 className="font-bold text-base sm:text-lg text-white tracking-tight truncate max-w-[14rem]">
+                {room.roomName || 'Untitled Room'}
               </h3>
+              {/* Debug info */}
+              {process.env.NODE_ENV === 'development' && (
+                <div className="text-xs text-gray-500">
+                  Debug: roomName="{room.roomName}"
+                </div>
+              )}
+              <span className="font-mono text-xs text-gray-400">{room.roomCode}</span>
               {room.isPrivate && (
                 <LockClosedIcon 
                   className="h-3 w-3 sm:h-4 sm:w-4 text-gaming-accent flex-shrink-0" 

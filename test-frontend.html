@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Frontend Room Creation</title>
+    <script src="https://unpkg.com/colyseus.js@^0.15.0/dist/colyseus.js"></script>
+</head>
+<body>
+    <h1>Test Frontend Room Creation</h1>
+    <div id="status">Connecting...</div>
+    <div id="rooms"></div>
+    
+    <script>
+        async function testFrontend() {
+            const statusDiv = document.getElementById('status');
+            const roomsDiv = document.getElementById('rooms');
+            
+            try {
+                statusDiv.innerHTML = 'Connecting to lobby...';
+                
+                const client = new Colyseus.Client('ws://localhost:3002');
+                const lobby = await client.joinOrCreate('lobby');
+                
+                statusDiv.innerHTML = 'Connected! Creating room...';
+                
+                // Listen for room updates
+                lobby.onMessage('rooms_updated', (data) => {
+                    console.log('Rooms updated:', data);
+                    
+                    let html = '<h2>Active Rooms:</h2>';
+                    if (data.activeRooms && data.activeRooms.length > 0) {
+                        data.activeRooms.forEach(room => {
+                            html += `<div>Room: ${room.roomCode}, Name: "${room.roomName}", Game: ${room.gameId}</div>`;
+                        });
+                    } else {
+                        html += '<div>No rooms found</div>';
+                    }
+                    
+                    roomsDiv.innerHTML = html;
+                });
+                
+                // Create a room
+                lobby.send('create_room', {
+                    gameId: 'the-battle',
+                    isPrivate: false,
+                    roomName: 'Test Room Frontend',
+                    settings: {}
+                });
+                
+                statusDiv.innerHTML = 'Room creation sent!';
+                
+            } catch (error) {
+                statusDiv.innerHTML = 'Error: ' + error.message;
+                console.error('Error:', error);
+            }
+        }
+        
+        testFrontend();
+    </script>
+</body>
+</html>

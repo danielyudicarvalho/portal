@@ -85,7 +85,9 @@ function SnakeMultiplayerContent() {
     };
 
     const buildGameUrl = () => {
-        let gameUrl = '/games/snake-multiplayer/index.html';
+        // Use the Colyseus-enabled v2 client so joining the same room puts
+        // all players into the same Colyseus session
+        let gameUrl = '/games/snake-multiplayer-v2/index.html';
         
         if (connectionInfo) {
             const params = new URLSearchParams();

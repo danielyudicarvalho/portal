@@ -4,7 +4,7 @@
  */
 
 import { Client, Room } from 'colyseus.js';
-import { RetryMechanism, retryConnection, retryRoomOperation } from './retry-mechanism';
+import { retryConnection, retryRoomOperation } from './retry-mechanism';
 import { OfflineHandler } from './offline-handler';
 
 // Types based on the existing server implementation
@@ -32,6 +32,7 @@ export interface GameInfo {
 
 export interface ActiveRoom {
   roomId: string;
+  roomName?: string;
   roomCode: string;
   gameId: string;
   playerCount: number;
@@ -95,6 +96,7 @@ export type RoomServiceEventType =
   | 'room_created'
   | 'room_joined'
   | 'room_disposed'
+  | 'room_alternatives'
   | 'error'
   | 'connection_status_changed';
 
@@ -126,7 +128,7 @@ export class RoomService {
     // Initialize event handler arrays
     const eventTypes: RoomServiceEventType[] = [
       'connected', 'disconnected', 'rooms_updated', 'room_state_changed',
-      'room_created', 'room_joined', 'room_disposed', 'error', 'connection_status_changed'
+      'room_created', 'room_joined', 'room_disposed', 'room_alternatives', 'error', 'connection_status_changed'
     ];
     
     eventTypes.forEach(eventType => {
@@ -477,7 +479,8 @@ export class RoomService {
         clearTimeout(timeout);
         this.off('rooms_updated', handler);
         
-        const rooms = data.rooms || [];
+        // Fix: Use activeRooms instead of rooms (server sends activeRooms)
+        const rooms = data.activeRooms || [];
         console.log('📋 Total rooms received:', rooms.length);
         const filteredRooms = gameId ? 
           rooms.filter((room: ActiveRoom) => room.gameId === gameId) : 
@@ -492,6 +495,8 @@ export class RoomService {
   }
 
   public async createRoom(gameId: string, options: RoomCreationOptions): Promise<string> {
+    console.log('🔍 DEBUG: createRoom called with:', { gameId, options });
+    
     if (!this.lobbyConnection) {
       throw new Error('Not connected to lobby');
     }
@@ -521,11 +526,15 @@ export class RoomService {
         this.on('room_created', successHandler);
         this.on('error', errorHandler);
 
-        this.lobbyConnection!.send('create_room', {
+        const createRoomMessage = {
           gameId,
           isPrivate: options.isPrivate,
+          roomName: options.roomName,
           settings: options.gameSettings || {}
-        });
+        };
+        
+        console.log('🔍 DEBUG: Sending create_room message:', createRoomMessage);
+        this.lobbyConnection!.send('create_room', createRoomMessage);
       });
     });
 
