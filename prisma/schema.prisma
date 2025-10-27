@@ -30,10 +30,11 @@ model User {
   updatedAt   DateTime @updatedAt
 
   // Relations
-  accounts   Account[]
-  sessions   Session[]
-  favorites  UserFavorite[]
-  gameHistory GameSession[]
+  accounts     Account[]
+  sessions     Session[]
+  favorites    UserFavorite[]
+  gameHistory  GameSession[]
+  transactions Transaction[]
 
   @@map("users")
 }
@@ -158,8 +159,45 @@ model GameTag {
   @@map("game_tags")
 }
 
+model Transaction {
+  id          String            @id @default(cuid())
+  amount      Float
+  type        TransactionType
+  status      TransactionStatus @default(PENDING)
+  description String?
+  
+  // Payment provider details
+  paymentId       String? // Stripe payment intent ID, etc.
+  paymentProvider String? // "stripe", "paypal", etc.
+  
+  // Metadata
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+  
+  @@map("transactions")
+}
+
 enum Role {
   USER
   ADMIN
+}
+
+enum TransactionType {
+  DEPOSIT
+  WITHDRAWAL
+  PURCHASE
+  REFUND
+}
+
+enum TransactionStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  CANCELLED
 }
 

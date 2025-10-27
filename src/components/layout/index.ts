@@ -7,3 +7,4 @@ export { default as Sidebar } from './Sidebar';
 export { default as MobileNav } from './MobileNav';
 export { default as ResponsiveGameLayout } from './ResponsiveGameLayout';
 export { MobileMenuProvider, useMobileMenu, useMobileMenuContext } from './MobileMenuContext';
+export { BalanceSection } from './BalanceSection';
