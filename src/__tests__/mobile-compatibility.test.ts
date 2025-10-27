@@ -104,26 +104,26 @@ describe('Mobile Compatibility Tests', () => {
 
       const originalRatio = 800 / 600;
       const scaledRatio = gameSize.width / gameSize.height;
-      
+
       expect(Math.abs(originalRatio - scaledRatio)).toBeLessThan(0.01);
     });
 
     it('should handle orientation changes', async () => {
       const { OrientationManager } = await import('@/lib/orientation-manager');
-      
+
       const orientationManager = new OrientationManager();
-      
+
       // Portrait
       Object.defineProperty(window, 'innerWidth', { value: 375, writable: true });
       Object.defineProperty(window, 'innerHeight', { value: 667, writable: true });
-      
+
       orientationManager.handleOrientationChange();
       expect(orientationManager.getCurrentOrientation()).toBe('portrait');
 
       // Landscape
       Object.defineProperty(window, 'innerWidth', { value: 667, writable: true });
       Object.defineProperty(window, 'innerHeight', { value: 375, writable: true });
-      
+
       orientationManager.handleOrientationChange();
       expect(orientationManager.getCurrentOrientation()).toBe('landscape');
     });
@@ -143,10 +143,10 @@ describe('Mobile Compatibility Tests', () => {
 
     it('should adapt keyboard controls to touch', async () => {
       const { TouchInputAdapter } = await import('@/lib/touch-input-adapter');
-      
+
       const adapter = new TouchInputAdapter();
       const mockGameElement = document.createElement('div');
-      
+
       const touchControls = adapter.adaptKeyboardControls(mockGameElement, {
         'Space': { label: 'Jump', position: { x: 50, y: 500 } },
         'ArrowLeft': { label: 'Left', position: { x: 100, y: 550 } },
@@ -160,18 +160,18 @@ describe('Mobile Compatibility Tests', () => {
 
     it('should handle multi-touch gestures', async () => {
       const { TouchInputAdapter } = await import('@/lib/touch-input-adapter');
-      
+
       const adapter = new TouchInputAdapter();
       const mockElement = document.createElement('div');
-      
+
       adapter.enableGestureRecognition(mockElement);
 
       // Simulate pinch gesture
       const touch1 = { identifier: 1, clientX: 100, clientY: 100 };
       const touch2 = { identifier: 2, clientX: 200, clientY: 200 };
-      
+
       const gestureData = adapter.processMultiTouch([touch1, touch2]);
-      
+
       expect(gestureData.type).toBe('pinch');
       expect(gestureData.distance).toBeGreaterThan(0);
     });
@@ -180,7 +180,7 @@ describe('Mobile Compatibility Tests', () => {
   describe('Game Compatibility Checking', () => {
     it('should check basic game compatibility', async () => {
       const { checkGameCompatibility } = await import('@/lib/mobile-game-compatibility');
-      
+
       const gameConfig = {
         id: 'simple-game',
         requiresKeyboard: false,
@@ -198,7 +198,7 @@ describe('Mobile Compatibility Tests', () => {
 
     it('should identify incompatible games', async () => {
       const { checkGameCompatibility } = await import('@/lib/mobile-game-compatibility');
-      
+
       const gameConfig = {
         id: 'complex-game',
         requiresKeyboard: true,
@@ -216,7 +216,7 @@ describe('Mobile Compatibility Tests', () => {
 
     it('should suggest adaptations for partially compatible games', async () => {
       const { checkGameCompatibility } = await import('@/lib/mobile-game-compatibility');
-      
+
       const gameConfig = {
         id: 'adaptable-game',
         requiresKeyboard: true,
@@ -228,7 +228,7 @@ describe('Mobile Compatibility Tests', () => {
 
       expect(compatibility.isCompatible).toBe(true);
       expect(compatibility.adaptationsNeeded.length).toBeGreaterThan(0);
-      expect(compatibility.adaptationsNeeded.some(a => 
+      expect(compatibility.adaptationsNeeded.some(a =>
         a.includes('touch controls')
       )).toBe(true);
     });
@@ -237,7 +237,7 @@ describe('Mobile Compatibility Tests', () => {
   describe('Performance Compatibility', () => {
     it('should check device performance capabilities', async () => {
       const { checkDeviceCapabilities } = await import('@/lib/mobile-game-compatibility');
-      
+
       // Mock device capabilities
       Object.defineProperty(navigator, 'hardwareConcurrency', { value: 4, writable: true });
       Object.defineProperty(performance, 'memory', {
@@ -254,7 +254,7 @@ describe('Mobile Compatibility Tests', () => {
 
     it('should recommend performance settings', async () => {
       const { getRecommendedSettings } = await import('@/lib/mobile-game-compatibility');
-      
+
       const gameConfig = {
         id: 'performance-heavy-game',
         minCpuCores: 2,
@@ -273,7 +273,7 @@ describe('Mobile Compatibility Tests', () => {
   describe('Browser Compatibility', () => {
     it('should check WebGL support', async () => {
       const { checkWebGLSupport } = await import('@/lib/mobile-game-compatibility');
-      
+
       // Mock WebGL context
       const mockCanvas = document.createElement('canvas');
       const mockContext = {
@@ -297,7 +297,7 @@ describe('Mobile Compatibility Tests', () => {
 
     it('should check audio support', async () => {
       const { checkAudioSupport } = await import('@/lib/mobile-game-compatibility');
-      
+
       // Mock Audio API
       global.Audio = jest.fn().mockImplementation(() => ({
         canPlayType: jest.fn((type) => {
@@ -318,7 +318,7 @@ describe('Mobile Compatibility Tests', () => {
 
     it('should check fullscreen API support', async () => {
       const { checkFullscreenSupport } = await import('@/lib/mobile-game-compatibility');
-      
+
       // Mock fullscreen API
       Object.defineProperty(document.documentElement, 'requestFullscreen', {
         value: jest.fn(),
@@ -335,7 +335,7 @@ describe('Mobile Compatibility Tests', () => {
   describe('Network Compatibility', () => {
     it('should adapt to slow network conditions', async () => {
       const { NetworkAwareLoader } = await import('@/lib/mobile-game-compatibility');
-      
+
       // Mock slow network
       Object.defineProperty(navigator, 'connection', {
         value: {
@@ -356,7 +356,7 @@ describe('Mobile Compatibility Tests', () => {
 
     it('should optimize for fast networks', async () => {
       const { NetworkAwareLoader } = await import('@/lib/mobile-game-compatibility');
-      
+
       // Mock fast network
       Object.defineProperty(navigator, 'connection', {
         value: {
@@ -379,7 +379,7 @@ describe('Mobile Compatibility Tests', () => {
   describe('Accessibility Compatibility', () => {
     it('should ensure touch targets are accessible', async () => {
       const { validateTouchTargets } = await import('@/lib/mobile-game-compatibility');
-      
+
       const touchControls = [
         { size: { width: 44, height: 44 }, position: { x: 50, y: 500 } },
         { size: { width: 30, height: 30 }, position: { x: 100, y: 500 } }, // Too small
@@ -396,7 +396,7 @@ describe('Mobile Compatibility Tests', () => {
 
     it('should check color contrast for mobile displays', async () => {
       const { checkColorContrast } = await import('@/lib/mobile-game-compatibility');
-      
+
       const colorScheme = {
         background: '#000000',
         text: '#ffffff',

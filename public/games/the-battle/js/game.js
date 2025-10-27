@@ -176,11 +176,70 @@ class TankBattleGame extends Phaser.Scene {
             const client = new window.Colyseus.Client(this.net.serverUrl);
             this.net.client = client;
 
+            const joinViaLobbyByCode = async (code) => {
+                const lobby = await client.joinOrCreate('lobby');
+                return new Promise(async (resolve, reject) => {
+                    const timeout = setTimeout(() => {
+                        try { lobby.leave(); } catch (_) {}
+                        reject(new Error('Join by code timeout'));
+                    }, 8000);
+
+                    const cleanup = () => {
+                        clearTimeout(timeout);
+                        try {
+                            lobby.removeAllListeners?.();
+                            lobby.leave();
+                        } catch (_) {}
+                    };
+
+                    lobby.onMessage('join_room', async ({ roomId }) => {
+                        try {
+                            const r = await client.joinById(roomId, { name: 'Player' });
+                            cleanup();
+                            resolve(r);
+                        } catch (err) {
+                            cleanup();
+                            reject(err);
+                        }
+                    });
+
+                    lobby.onMessage('error', (err) => {
+                        cleanup();
+                        reject(new Error(err?.message || 'Join by code failed'));
+                    });
+
+                    lobby.send('join_private_room', { roomCode: code });
+                });
+            };
+
             let room = null;
-            if (this.net.roomId) {
-                room = await client.joinById(this.net.roomId, { name: 'Player' });
-            } else {
+            let joined = false;
+
+            // 1) Prefer explicit roomId
+            if (this.net.roomId && !joined) {
+                try {
+                    room = await client.joinById(this.net.roomId, { name: 'Player' });
+                    joined = true;
+                } catch (e) {
+                    console.warn('joinById failed, will try roomCode or fallback:', e?.message || e);
+                }
+            }
+
+            // 2) Try roomCode via lobby (private rooms)
+            if (!joined && this.net.roomCode) {
+                try {
+                    room = await joinViaLobbyByCode(this.net.roomCode);
+                    joined = true;
+                } catch (e) {
+                    console.warn('join by roomCode failed, falling back:', e?.message || e);
+                }
+            }
+
+            // 3) Fallback: join or create a public battle room (ensures playability)
+            if (!joined) {
                 room = await client.joinOrCreate('battle_game', { name: 'Player' });
+                joined = true;
+                // Note: this may not be the intended session if you expected a specific room
             }
 
             this.net.room = room;

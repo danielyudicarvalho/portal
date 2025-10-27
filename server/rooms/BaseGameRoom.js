@@ -42,6 +42,7 @@ class BaseGameRoom extends Room {
 
     // Set room configuration
     this.state.gameId = options.gameId || 'unknown';
+    this.state.roomName = (options.roomName || '').toString().slice(0, 50);
     this.state.roomCode = options.roomCode || this.generateRoomCode();
     this.state.isPrivate = options.isPrivate || false;
     this.state.minPlayers = options.minPlayers || 2;
@@ -52,6 +53,8 @@ class BaseGameRoom extends Room {
     this.state.createdAt = Date.now();
     this.state.lastUpdate = Date.now();
     this.maxClients = this.state.maxPlayers;
+
+
 
     // Apply game-specific settings
     if (options.settings) {
@@ -806,9 +809,11 @@ class BaseGameRoom extends Room {
   // Enhanced metadata management for monitoring (Requirement 12.1)
   updateRoomMetadata() {
     try {
+
       // Update room metadata for lobby tracking
       this.setMetadata({
         gameId: this.state.gameId,
+        roomName: this.state.roomName,
         roomCode: this.state.roomCode,
         state: this.state.state,
         playerCount: this.state.getConnectedPlayers().length,

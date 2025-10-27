@@ -5,8 +5,13 @@
 
 class SnakeMultiplayerGame {
     constructor() {
+        // Read connection parameters from URL so the game auto-joins the
+        // correct Colyseus room created/selected in the Rooms UI
+        this.urlParams = new URLSearchParams(window.location.search);
+        const serverUrlParam = this.urlParams.get('serverUrl');
+
         this.sdk = new SnakeMultiplayerSDK({
-            serverUrl: 'ws://localhost:3002'
+            serverUrl: serverUrlParam || 'ws://localhost:3002'
         });
 
         this.canvas = document.getElementById('gameCanvas');
@@ -29,7 +34,56 @@ class SnakeMultiplayerGame {
         this.setupEventHandlers();
         this.setupKeyboardControls();
 
+        // Attempt automatic connection based on URL params (roomId / roomCode)
+        // so users who joined the same room from the site play together.
+        this.autoConnectFromUrl();
+
         console.log('🐍 Snake Multiplayer Game initialized');
+    }
+
+    async autoConnectFromUrl() {
+        try {
+            const type = this.urlParams.get('connectionType') || this.urlParams.get('type');
+            const roomId = this.urlParams.get('roomId');
+            const roomCode = this.urlParams.get('roomCode');
+            const name = (this.elements?.playerName?.value || `Player${Math.floor(Math.random()*1000)}`);
+
+            if (!type && !roomId && !roomCode) {
+                return; // No deep-link info provided
+            }
+
+            // Reflect in UI
+            this.updateStatus('Connecting to room...', 'info');
+
+            if ((type === 'join' || !type) && roomId) {
+                await this.sdk.joinRoom(roomId, { name });
+                return;
+            }
+
+            if ((type === 'join_by_code' || type === 'join') && roomCode) {
+                await this.sdk.joinPrivateRoom(roomCode, { name });
+                return;
+            }
+
+            if (type === 'create') {
+                // When coming from the Rooms flow, the room is already created
+                // and `roomId` is provided. Prefer join by ID to avoid creating another.
+                if (roomId) {
+                    await this.sdk.joinRoom(roomId, { name });
+                } else {
+                    await this.sdk.createRoom('snake', { name, isPrivate: true });
+                }
+                return;
+            }
+
+            if (type === 'quick_match') {
+                await this.sdk.quickMatch('snake', { name });
+                return;
+            }
+        } catch (err) {
+            console.error('Auto-connection failed:', err);
+            this.updateStatus('Failed to connect to the room automatically. You can use the lobby controls.', 'error');
+        }
     }
 
     initializeUI() {

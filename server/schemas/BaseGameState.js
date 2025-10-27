@@ -29,6 +29,7 @@ class BaseGameState extends Schema {
   constructor() {
     super();
     this.gameId = '';
+    this.roomName = '';
     this.roomCode = '';
     this.state = 'LOBBY'; // LOBBY, COUNTDOWN, PLAYING, RESULTS, RESET
     this.players = new MapSchema();
@@ -103,6 +104,7 @@ type('number')(Player.prototype, 'lastActivity');
 type('string')(Player.prototype, 'gameData');
 
 type('string')(BaseGameState.prototype, 'gameId');
+type('string')(BaseGameState.prototype, 'roomName');
 type('string')(BaseGameState.prototype, 'roomCode');
 type('string')(BaseGameState.prototype, 'state');
 type({ map: Player })(BaseGameState.prototype, 'players');

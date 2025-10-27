@@ -17,6 +17,7 @@ class ActiveRoom extends Schema {
   constructor() {
     super();
     this.roomId = '';
+    this.roomName = '';
     this.roomCode = '';
     this.gameId = '';
     this.playerCount = 0;
@@ -48,6 +49,7 @@ type('number')(GameInfo.prototype, 'maxPlayers');
 type('string')(GameInfo.prototype, 'description');
 
 type('string')(ActiveRoom.prototype, 'roomId');
+type('string')(ActiveRoom.prototype, 'roomName');
 type('string')(ActiveRoom.prototype, 'roomCode');
 type('string')(ActiveRoom.prototype, 'gameId');
 type('number')(ActiveRoom.prototype, 'playerCount');
@@ -205,8 +207,9 @@ class GameLobby extends Room {
 
 
 
-  async handleCreateRoom(client, { gameId, isPrivate = false, settings = {} }) {
+  async handleCreateRoom(client, { gameId, isPrivate = false, settings = {}, roomName = '' }) {
     try {
+
       const gameInfo = this.state.availableGames.get(gameId);
       if (!gameInfo) {
         client.send('error', { 
@@ -225,19 +228,43 @@ class GameLobby extends Room {
         minPlayers: gameInfo.minPlayers,
         maxPlayers: gameInfo.maxPlayers,
         settings,
-        roomCode
+        roomCode,
+        roomName
       };
 
       // Create room via matchMaker - use the global matchMaker
       const { matchMaker } = require('colyseus');
       const createdRoom = await matchMaker.createRoom(gameInfo.roomType, roomOptions);
       
-      // Track the room with proper room code
-      this.trackRoom(createdRoom.roomId, gameId, gameInfo.maxPlayers, isPrivate, roomCode);
+      // Track the room with proper room code and name
+      this.trackRoom(createdRoom.roomId, gameId, gameInfo.maxPlayers, isPrivate, roomCode, roomName);
+      
+      // Immediately broadcast updated room list to all lobby clients
+      try {
+        const publicRooms = Array.from(this.state.activeRooms.values())
+          .filter(room => !room.isPrivate);
+        this.broadcast('rooms_updated', {
+          activeRooms: publicRooms,
+          totalRooms: this.state.activeRooms.size,
+          publicRooms: publicRooms.length,
+          privateRooms: this.state.activeRooms.size - publicRooms.length,
+          totalPlayers: Array.from(this.state.activeRooms.values())
+            .reduce((sum, room) => sum + room.playerCount, 0),
+          stats: {
+            removedRooms: 0,
+            updatedRooms: 1,
+            capacityWarnings: 0,
+            emptyRoomsDisposed: 0
+          }
+        });
+      } catch (e) {
+        console.warn('⚠️ Failed to broadcast rooms_updated after create:', e.message);
+      }
       
       client.send('room_created', {
         roomId: createdRoom.roomId,
         roomCode: roomCode,
+        roomName: roomName,
         gameId: gameId,
         isPrivate: isPrivate
       });
@@ -482,10 +509,11 @@ class GameLobby extends Room {
     });
   }
 
-  trackRoom(roomId, gameId, maxPlayers, isPrivate, roomCode) {
+  trackRoom(roomId, gameId, maxPlayers, isPrivate, roomCode, roomName = '') {
     const activeRoom = new ActiveRoom();
     activeRoom.roomId = roomId;
     activeRoom.roomCode = roomCode || this.generateRoomCode();
+    activeRoom.roomName = roomName || '';
     activeRoom.gameId = gameId;
     activeRoom.maxPlayers = maxPlayers;
     activeRoom.isPrivate = isPrivate;
@@ -496,6 +524,7 @@ class GameLobby extends Room {
     this.state.activeRooms.set(roomId, activeRoom);
     
     console.log(`📊 Tracking room: ${roomId} (${activeRoom.roomCode}) - ${gameId} ${isPrivate ? 'private' : 'public'}`);
+
   }
 
   setupRoomMonitoring() {
@@ -505,26 +534,27 @@ class GameLobby extends Room {
         const { matchMaker } = require('colyseus');
         const currentRooms = typeof matchMaker.query === 'function' ? await matchMaker.query({}) : [];
         const currentRoomIds = new Set(currentRooms.map(r => r.roomId));
-        
-        // Remove rooms that no longer exist (Requirement 3.6)
+
+        // NOTE: Do not aggressively remove rooms based solely on query() results.
+        // In some environments query() may not return all live rooms momentarily,
+        // which caused valid rooms to disappear from the list. We now rely on
+        // explicit 'room_disposed' events (published by rooms on onDispose)
+        // for authoritative removal.
         const trackedRoomIds = Array.from(this.state.activeRooms.keys());
-        let removedCount = 0;
+        let removedCount = 0; // kept for stats/logging compatibility
         let emptyRoomsDisposed = 0;
-        
-        trackedRoomIds.forEach(roomId => {
-          if (!currentRoomIds.has(roomId)) {
-            const removedRoom = this.state.activeRooms.get(roomId);
-            this.state.activeRooms.delete(roomId);
-            removedCount++;
-            console.log(`🗑️ Removed inactive room: ${roomId} (${removedRoom?.roomCode || 'unknown'})`);
-          }
-        });
 
         // Update room info and handle capacity management (Requirement 3.5)
         let updatedCount = 0;
         let capacityWarnings = 0;
         
         currentRooms.forEach(room => {
+          // Skip tracking the lobby itself in the game room list
+          // matchMaker.query() returns objects with the field `name` for the room type
+          // (e.g., 'lobby', 'battle_game', etc.) — not `roomName`.
+          if (room.roomName === 'lobby' || room.name === 'lobby') {
+            return;
+          }
           const trackedRoom = this.state.activeRooms.get(room.roomId);
           if (trackedRoom) {
             const oldPlayerCount = trackedRoom.playerCount;
@@ -535,6 +565,7 @@ class GameLobby extends Room {
             
             if (room.metadata) {
               trackedRoom.roomCode = room.metadata.roomCode || trackedRoom.roomCode;
+              trackedRoom.roomName = room.metadata.roomName || trackedRoom.roomName;
               trackedRoom.state = room.metadata.state || 'LOBBY';
               trackedRoom.gameId = room.metadata.gameId || trackedRoom.gameId;
               if (typeof room.metadata.phaseStartedAt === 'number') {
@@ -574,7 +605,8 @@ class GameLobby extends Room {
               room.metadata?.gameId || 'unknown',
               room.maxClients || 8,
               room.metadata?.isPrivate || false,
-              room.metadata?.roomCode
+              room.metadata?.roomCode,
+              room.metadata?.roomName || ''
             );
             updatedCount++;
           }
