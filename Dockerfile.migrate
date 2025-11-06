@@ -1,0 +1,27 @@
+FROM node:18-slim
+
+# Install OpenSSL for Prisma
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    openssl \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+COPY prisma ./prisma/
+
+# Install dependencies
+RUN npm ci --only=production
+RUN npm install prisma @prisma/client
+
+# Generate Prisma client
+RUN npx prisma generate
+
+# Copy migration script
+COPY scripts/docker-migrate.sh ./scripts/
+RUN chmod +x ./scripts/docker-migrate.sh
+
+# Run migrations
+CMD ["./scripts/docker-migrate.sh"]

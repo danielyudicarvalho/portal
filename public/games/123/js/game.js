@@ -16,6 +16,13 @@ var gameOptions = {
   nextLevel: 400
 }
 
+// Game scoring system
+var gameScore = 0;
+var gameStartTime = null;
+var questionsAnswered = 0;
+var currentStreak = 0;
+var maxStreak = 0;
+
 // once the window has been completely loaded...
 window.onload = function () {
 
@@ -67,6 +74,16 @@ playGame.prototype = {
     // topScore gets the previously saved value in local storage if any, zero otherwise
     this.topScore = localStorage.getItem(gameOptions.localStorageName) == null ? 0 : localStorage.getItem(gameOptions.localStorageName);
 
+    // Initialize game scoring
+    gameScore = 0;
+    gameStartTime = Date.now();
+    questionsAnswered = 0;
+    currentStreak = 0;
+    maxStreak = 0;
+
+    // Send initial game state
+    this.sendGameStateUpdate();
+
     // sumsArray is the array with all possible questions
     this.sumsArray = [];
 
@@ -109,6 +126,12 @@ playGame.prototype = {
     // scoreText will keep the current score
     this.scoreText = game.add.text(10, 10, "-", {
       font: "bold 24px Arial"
+    });
+
+    // Add streak display
+    this.streakText = game.add.text(10, 60, "Streak: 0", {
+      font: "bold 18px Arial",
+      fill: "#00ff00"
     });
 
     // loop to create the three answer buttons
@@ -175,11 +198,40 @@ playGame.prototype = {
     }
   },
 
+  // Send game state updates to parent window
+  sendGameStateUpdate: function() {
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage({
+        type: 'GAME_STATE_UPDATE',
+        gameState: {
+          score: gameScore,
+          questionsAnswered: questionsAnswered,
+          currentStreak: currentStreak,
+          maxStreak: maxStreak,
+          isPlaying: !this.isGameOver,
+          gameStartTime: gameStartTime
+        }
+      }, window.location.origin);
+    }
+  },
+
+  // Update UI elements
+  updateUI: function() {
+    // Update score display
+    this.scoreText.text = "Score: " + this.score.toString() + "\nBest Score: " + this.topScore.toString();
+    
+    // Update streak display
+    this.streakText.text = "Streak: " + currentStreak + " (Best: " + maxStreak + ")";
+    
+    // Send game state to parent window for real-time display
+    this.sendGameStateUpdate();
+  },
+
   // this method asks next question
   nextNumber: function () {
 
     // updating score text
-    this.scoreText.text = "Score: " + this.score.toString() + "\nBest Score: " + this.topScore.toString();
+    this.updateUI();
 
     // if we already answered more than one question...
     if (this.correctAnswers > 1) {
@@ -226,8 +278,20 @@ playGame.prototype = {
       // button frame is equal to randomSum means the answer is correct
       if (button.frame == this.randomSum) {
 
+        // Calculate time-based score bonus
+        var timeBonus = Math.floor((this.buttonMask.x + 350) / 4);
+        
         // score is increased according to the time spent to answer
-        this.score += Math.floor((this.buttonMask.x + 350) / 4);
+        this.score += timeBonus;
+
+        // Update game scoring variables
+        questionsAnswered++;
+        currentStreak++;
+        maxStreak = Math.max(maxStreak, currentStreak);
+        
+        // Calculate enhanced score with streak bonus
+        var streakBonus = currentStreak >= 5 ? Math.floor(currentStreak / 5) * 50 : 0;
+        gameScore = this.score + streakBonus;
 
         // one more correct answer
         this.correctAnswers++;
@@ -238,6 +302,9 @@ playGame.prototype = {
 
       // wrong answer
       else {
+
+        // Reset streak on wrong answer
+        currentStreak = 0;
 
         // if it's not the first question...
         if (this.correctAnswers > 1) {
@@ -264,12 +331,81 @@ playGame.prototype = {
     // now it's game over
     this.isGameOver = true;
 
+    // Final score calculation
+    gameScore = this.score;
+
+    // Send final game state update
+    this.sendGameStateUpdate();
+
     // updating top score in local storage
     localStorage.setItem(gameOptions.localStorageName, Math.max(this.score, this.topScore));
 
-    // restart the game after two seconds
-    game.time.events.add(Phaser.Timer.SECOND * 2, function () {
+    // Submit score to server if score is greater than 0
+    if (gameScore > 0) {
+      this.submitScore();
+    }
+
+    // restart the game after four seconds (give time for score submission)
+    game.time.events.add(Phaser.Timer.SECOND * 4, function () {
       game.state.start("PlayGame");
     }, this);
+  },
+
+  // Submit score to the server
+  submitScore: function() {
+    var gameDuration = Math.floor((Date.now() - gameStartTime) / 1000);
+    
+    // Show game over display
+    this.showGameOver();
+    
+    // Submit to API
+    fetch('/api/games/123/scores', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        score: gameScore,
+        level: questionsAnswered, // Use questions answered as level
+        duration: gameDuration,
+        metadata: {
+          questionsAnswered: questionsAnswered,
+          maxStreak: maxStreak,
+          averageTimePerQuestion: gameDuration / Math.max(questionsAnswered, 1)
+        }
+      })
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        console.log('Score submitted successfully:', data);
+        // Show appropriate message based on user status
+        if (this.gameOverText) {
+          if (data.anonymous) {
+            this.gameOverText.text += '\nSign in to save to leaderboard!';
+          } else {
+            this.gameOverText.text += '\nScore Saved to Leaderboard!';
+          }
+        }
+      } else {
+        console.error('Failed to submit score:', data.error);
+      }
+    })
+    .catch(error => {
+      console.error('Error submitting score:', error);
+    });
+  },
+
+  // Show game over screen
+  showGameOver: function() {
+    // Create game over text overlay
+    this.gameOverText = game.add.text(250, 350, 
+      'GAME OVER\n\nFinal Score: ' + gameScore + '\nQuestions: ' + questionsAnswered + '\nMax Streak: ' + maxStreak, {
+      font: '16px Arial',
+      fill: '#ffffff',
+      align: 'center',
+      fontWeight: 'bold'
+    });
+    this.gameOverText.anchor.setTo(0.5, 0.5);
   }
 }

@@ -428,6 +428,36 @@ body {
     box-shadow: 0 0 0 2px rgba(78, 205, 196, 0.2);
   }
 
+  /* Stripe Elements styling */
+  .StripeElement {
+    width: 100%;
+    padding: 12px 16px;
+    background: transparent;
+    border: none;
+    outline: none;
+    font-size: 16px;
+    font-family: 'Inter', system-ui, sans-serif;
+    color: #ffffff;
+  }
+
+  .StripeElement--focus {
+    outline: none;
+  }
+
+  .StripeElement--invalid {
+    border-color: #ef4444;
+  }
+
+  .StripeElement--webkit-autofill {
+    background-color: transparent !important;
+  }
+
+  /* Ensure Stripe iframe is visible */
+  .__PrivateStripeElement iframe {
+    height: 40px !important;
+    min-height: 40px !important;
+  }
+
   .gaming-gradient-text {
     background: linear-gradient(135deg, #ff6b35 0%, #4ecdc4 100%);
     -webkit-background-clip: text;

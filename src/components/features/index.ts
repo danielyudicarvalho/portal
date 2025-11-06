@@ -31,3 +31,6 @@ export { default as RoomCard } from './RoomCard';
 export { default as RoomsList } from './RoomsList';
 export { default as CreateRoomModal } from './CreateRoomModal';
 export { default as RoomSharingModal } from './RoomSharingModal';
+export { GameLeaderboard } from './GameLeaderboard';
+export { ChampionshipCard } from './ChampionshipCard';
+export { CreateChampionshipModal } from './CreateChampionshipModal';

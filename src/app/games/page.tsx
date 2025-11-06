@@ -14,10 +14,10 @@ const mockGames: Game[] = [
     thumbnail: '/images/game-placeholder.svg',
     category: {
       id: '1',
-      name: 'Classic',
-      slug: 'classic',
-      description: 'Timeless games that never go out of style',
-      icon: '🎯',
+      name: 'Championship',
+      slug: 'championship',
+      description: 'Competitive games for champions',
+      icon: '🏆',
       order: 1,
       isActive: true
     },
@@ -37,10 +37,10 @@ const mockGames: Game[] = [
     thumbnail: '/images/game-placeholder.svg',
     category: {
       id: '1',
-      name: 'Classic',
-      slug: 'classic',
-      description: 'Timeless games that never go out of style',
-      icon: '🎯',
+      name: 'Championship',
+      slug: 'championship',
+      description: 'Competitive games for champions',
+      icon: '🏆',
       order: 1,
       isActive: true
     },
@@ -60,10 +60,10 @@ const mockGames: Game[] = [
     thumbnail: '/images/game-placeholder.svg',
     category: {
       id: '1',
-      name: 'Classic',
-      slug: 'classic',
-      description: 'Timeless games that never go out of style',
-      icon: '🎯',
+      name: 'Championship',
+      slug: 'championship',
+      description: 'Competitive games for champions',
+      icon: '🏆',
       order: 1,
       isActive: true
     },
@@ -83,10 +83,10 @@ const mockGames: Game[] = [
     thumbnail: '/images/game-placeholder.svg',
     category: {
       id: '1',
-      name: 'Classic',
-      slug: 'classic',
-      description: 'Timeless games that never go out of style',
-      icon: '🎯',
+      name: 'Championship',
+      slug: 'championship',
+      description: 'Competitive games for champions',
+      icon: '🏆',
       order: 1,
       isActive: true
     },
@@ -106,10 +106,10 @@ const mockGames: Game[] = [
     thumbnail: '/images/game-placeholder.svg',
     category: {
       id: '1',
-      name: 'Classic',
-      slug: 'classic',
-      description: 'Timeless games that never go out of style',
-      icon: '🎯',
+      name: 'Championship',
+      slug: 'championship',
+      description: 'Competitive games for champions',
+      icon: '🏆',
       order: 1,
       isActive: true
     },
@@ -152,10 +152,10 @@ const mockGames: Game[] = [
     thumbnail: '/images/game-placeholder.svg',
     category: {
       id: '1',
-      name: 'Classic',
-      slug: 'classic',
-      description: 'Timeless games that never go out of style',
-      icon: '🎯',
+      name: 'Championship',
+      slug: 'championship',
+      description: 'Competitive games for champions',
+      icon: '🏆',
       order: 1,
       isActive: true
     },
@@ -175,10 +175,10 @@ const mockGames: Game[] = [
     thumbnail: '/images/game-placeholder.svg',
     category: {
       id: '1',
-      name: 'Classic',
-      slug: 'classic',
-      description: 'Timeless games that never go out of style',
-      icon: '🎯',
+      name: 'Championship',
+      slug: 'championship',
+      description: 'Competitive games for champions',
+      icon: '🏆',
       order: 1,
       isActive: true
     },
@@ -285,15 +285,15 @@ const mockGames: Game[] = [
 
 ];
 
-const classicGamesCategory: GameCategoryType = {
+const championshipGamesCategory: GameCategoryType = {
   id: '1',
-  name: 'Classic',
-  slug: 'classic',
-  description: 'Timeless games that never go out of style',
-  icon: '🎯',
+  name: 'Championship',
+  slug: 'championship',
+  description: 'Competitive games for champions',
+  icon: '🏆',
   order: 1,
   isActive: true,
-  games: mockGames.filter(game => game.category.slug === 'classic')
+  games: mockGames.filter(game => game.category.slug === 'championship')
 };
 
 const teamGamesCategory: GameCategoryType = {
@@ -421,7 +421,7 @@ export default function GamesPage() {
 
         {/* Category Sections */}
         <GameCategory
-          category={classicGamesCategory}
+          category={championshipGamesCategory}
           onGameClick={handleGameClick}
           onToggleFavorite={handleToggleFavorite}
           onViewAllClick={handleViewAllClick}

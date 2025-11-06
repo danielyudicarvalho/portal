@@ -1,0 +1,123 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: game-portal-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=game_portal
+      - POSTGRES_USER=gameuser
+      - POSTGRES_PASSWORD=gamepass123
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./prisma/migrations:/docker-entrypoint-initdb.d/migrations:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gameuser -d game_portal"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Redis for caching and multiplayer sessions
+  redis:
+    image: redis:7-alpine
+    container_name: game-portal-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    restart: unless-stopped
+
+  # Next.js Application
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.nextjs
+      target: production
+    container_name: game-portal-app
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://gameuser:gamepass123@postgres:5432/game_portal
+      - NEXTAUTH_URL=http://localhost:3000
+      - NEXTAUTH_SECRET=GcmyGXqN+yPjbPQFUUB/bOLtAx+htwJQColuPoRQpXQ=
+      - NEXT_PUBLIC_MULTIPLAYER_URL=ws://localhost:3002
+      - REDIS_URL=redis://redis:6379
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      # Stripe configuration for credit system
+      - STRIPE_SECRET_KEY=sk_test_51234567890abcdef_test_key_for_docker_testing
+      - NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_51234567890abcdef_test_key_for_docker_testing
+      - STRIPE_WEBHOOK_SECRET=whsec_test_webhook_secret_for_docker_testing
+    volumes:
+      - ./public:/app/public:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      db-migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Multiplayer Server
+  multiplayer-server:
+    build:
+      context: .
+      dockerfile: Dockerfile.multiplayer
+      target: runner
+    container_name: game-portal-multiplayer
+    ports:
+      - "3002:3002"
+    environment:
+      - NODE_ENV=production
+      - REDIS_URL=redis://redis:6379
+      - MULTIPLAYER_PORT=3002
+      - CORS_ORIGIN=http://localhost:3000
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Database Migration Service (runs once)
+  db-migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile.migrate
+    container_name: game-portal-migrate
+    environment:
+      - DATABASE_URL=postgresql://gameuser:gamepass123@postgres:5432/game_portal
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  default:
+    name: game-portal-network

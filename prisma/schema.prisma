@@ -2,7 +2,7 @@
 
 generator client {
   provider      = "prisma-client-js"
-  binaryTargets = ["native", "linux-musl"]
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x", "debian-openssl-3.0.x"]
 }
 
 datasource db {
@@ -24,17 +24,22 @@ model User {
   lastName    String?
   avatar      String?
   balance     Float    @default(0)
+  credits     Int      @default(0)  // User's credit balance
   isActive    Boolean  @default(true)
   role        Role     @default(USER)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   // Relations
-  accounts     Account[]
-  sessions     Session[]
-  favorites    UserFavorite[]
-  gameHistory  GameSession[]
-  transactions Transaction[]
+  accounts          Account[]
+  sessions          Session[]
+  favorites         UserFavorite[]
+  gameHistory       GameSession[]
+  transactions      Transaction[]
+  gameScores        GameScore[]
+  leaderboardEntries LeaderboardEntry[]
+  createdChampionships Championship[] @relation("CreatedChampionships")
+  championshipParticipations ChampionshipParticipant[]
 
   @@map("users")
 }
@@ -98,6 +103,10 @@ model Game {
   favorites     UserFavorite[]
   gameHistory   GameSession[]
   tags          GameTag[]
+  gameScores    GameScore[]
+  leaderboards  Leaderboard[]
+  gameCosts     GameCost[]
+  championships Championship[]
 
   @@map("games")
 }
@@ -192,6 +201,9 @@ enum TransactionType {
   WITHDRAWAL
   PURCHASE
   REFUND
+  CREDIT_PURCHASE
+  CREDIT_SPEND
+  CREDIT_REFUND
 }
 
 enum TransactionStatus {
@@ -201,3 +213,146 @@ enum TransactionStatus {
   CANCELLED
 }
 
+model GameScore {
+  id        String   @id @default(cuid())
+  score     Int
+  level     Int      @default(1)
+  duration  Int?     // Duration in seconds
+  metadata  Json?    // Additional game-specific data
+  createdAt DateTime @default(now())
+  
+  // Relations
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+  gameId String
+  game   Game   @relation(fields: [gameId], references: [id])
+  leaderboardEntry LeaderboardEntry?
+  championshipParticipant ChampionshipParticipant?
+  
+  @@map("game_scores")
+}
+
+model Leaderboard {
+  id          String   @id @default(cuid())
+  period      LeaderboardPeriod
+  startDate   DateTime
+  endDate     DateTime?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  gameId  String
+  game    Game   @relation(fields: [gameId], references: [id])
+  entries LeaderboardEntry[]
+  
+  @@unique([gameId, period, startDate])
+  @@map("leaderboards")
+}
+
+model LeaderboardEntry {
+  id       String @id @default(cuid())
+  rank     Int
+  score    Int
+  level    Int    @default(1)
+  duration Int?   // Duration in seconds
+  
+  // Relations
+  leaderboardId String
+  leaderboard   Leaderboard @relation(fields: [leaderboardId], references: [id])
+  userId        String
+  user          User        @relation(fields: [userId], references: [id])
+  scoreId       String      @unique
+  gameScore     GameScore   @relation(fields: [scoreId], references: [id])
+  
+  @@unique([leaderboardId, userId])
+  @@map("leaderboard_entries")
+}
+
+enum LeaderboardPeriod {
+  DAILY
+  WEEKLY
+  MONTHLY
+  ALL_TIME
+}
+
+model CreditPackage {
+  id          String   @id @default(cuid())
+  name        String   // e.g., "Starter Pack", "Pro Pack"
+  credits     Int      // Number of credits in this package
+  price       Float    // Price in dollars
+  bonusCredits Int     @default(0) // Bonus credits for bulk purchases
+  isActive    Boolean  @default(true)
+  isPopular   Boolean  @default(false)
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@map("credit_packages")
+}
+
+model GameCost {
+  id        String   @id @default(cuid())
+  credits   Int      // Cost in credits to play this game
+  gameMode  String   @default("standard") // "standard", "championship", "multiplayer"
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relations
+  gameId String
+  game   Game   @relation(fields: [gameId], references: [id])
+  
+  @@unique([gameId, gameMode])
+  @@map("game_costs")
+}
+
+model Championship {
+  id              String   @id @default(cuid())
+  title           String
+  description     String?
+  entryFee        Int      @default(0) // Cost in credits
+  prizePool       Int      @default(0) // Total prize pool in credits
+  maxParticipants Int?     // Optional participant limit
+  startTime       DateTime
+  endTime         DateTime
+  status          ChampionshipStatus @default(UPCOMING)
+  isPublic        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  // Relations
+  gameId      String
+  game        Game   @relation(fields: [gameId], references: [id])
+  createdBy   String
+  creator     User   @relation("CreatedChampionships", fields: [createdBy], references: [id])
+  participants ChampionshipParticipant[]
+  
+  @@map("championships")
+}
+
+model ChampionshipParticipant {
+  id            String   @id @default(cuid())
+  joinedAt      DateTime @default(now())
+  bestScore     Int      @default(0)
+  finalRank     Int?     // Final ranking when championship ends
+  prizeWon      Int      @default(0) // Credits won
+  
+  // Relations
+  championshipId String
+  championship   Championship @relation(fields: [championshipId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bestScoreId    String?      @unique
+  gameScore      GameScore?   @relation(fields: [bestScoreId], references: [id])
+  
+  @@unique([championshipId, userId])
+  @@map("championship_participants")
+}
+
+enum ChampionshipStatus {
+  UPCOMING
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}

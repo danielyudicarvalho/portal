@@ -4,6 +4,13 @@ var holeWidthRange = [40, 240];
 var wallRange = [10, 70];
 var localStorageName = "squaregame";
 var savedData;
+
+// Game scoring system
+var gameScore = 0;
+var gameStartTime = null;
+var levelsCompleted = 0;
+var perfectLands = 0;
+var totalAttempts = 0;
 window.onload = function () {
   var width = 640;
   var height = 960;
@@ -28,6 +35,19 @@ playGame.prototype = {
     savedData = localStorage.getItem(localStorageName) == null ? {
       level: 1
     } : JSON.parse(localStorage.getItem(localStorageName));
+    
+    // Initialize game scoring
+    if (gameStartTime === null) {
+      gameStartTime = Date.now();
+      gameScore = 0;
+      levelsCompleted = 0;
+      perfectLands = 0;
+      totalAttempts = 0;
+    }
+    
+    // Send initial game state to parent window
+    this.sendGameStateUpdate();
+    
     game.scale.pageAlignHorizontally = true;
     game.scale.pageAlignVertically = true;
     game.scale.scaleMode = Phaser.ScaleManager.SHOW_ALL;
@@ -57,6 +77,10 @@ playGame.prototype = {
   },
   updateLevel: function () {
     this.squareText.text = (savedData.level - this.square.successful).toString();
+    
+    // Send updated game state
+    this.sendGameStateUpdate();
+    
     var holeWidth = game.rnd.between(holeWidthRange[0], holeWidthRange[1]);
     var wallWidth = game.rnd.between(wallRange[0], wallRange[1]);
     var leftSquareTween = game.add.tween(this.leftSquare).to({
@@ -116,6 +140,8 @@ playGame.prototype = {
   },
   stop: function () {
     var message = "";
+    totalAttempts++;
+    
     game.time.events.add(300, function () {
       if (message) {
         this.levelText.text = message;
@@ -123,25 +149,41 @@ playGame.prototype = {
     }, this);
     game.time.events.add(Phaser.Timer.SECOND * 2, function () {
       if (this.square.successful == savedData.level) {
+        // Level completed successfully
+        levelsCompleted++;
+        
         savedData.level++;
         localStorage.setItem(localStorageName, JSON.stringify({
           level: savedData.level
         }));
+        
+        // Send updated state
+        this.sendGameStateUpdate();
+        
+        // Check if game should end (after 10 levels or failure)
+        if (savedData.level > 10) {
+          this.endGame();
+          return;
+        }
+        
         game.state.start("PlayGame");
         return;
       }
       if (message) {
-        game.state.start("PlayGame");
+        // Game over - submit score
+        this.endGame();
         return;
       }
       this.updateLevel();
     }, this);
+    
     game.input.onUp.remove(this.stop, this);
     this.growTween.stop();
     this.rotateTween.stop();
     this.rotateTween = game.add.tween(this.square).to({
       angle: 0
     }, 300, Phaser.Easing.Cubic.Out, true);
+    
     if (this.square.width <= this.rightSquare.x - this.leftSquare.x) {
       message = "Oh no!!";
       this.rotateTween.onComplete.add(function () {
@@ -153,6 +195,12 @@ playGame.prototype = {
       if (this.square.width <= this.rightWall.x - this.leftWall.x) {
         var destY = game.height - this.leftSquare.height - this.square.height / 2;
         this.square.successful++;
+        perfectLands++; // Perfect landing bonus
+        
+        // Update score immediately for successful landing
+        var levelScore = this.calculateLevelScore();
+        gameScore += levelScore;
+        this.sendGameStateUpdate();
       } else {
         var destY = game.height - this.leftSquare.height - this.leftWall.height - this.square.height / 2;
         message = "Oh no!!";
@@ -161,5 +209,115 @@ playGame.prototype = {
         y: destY
       }, 600, Phaser.Easing.Bounce.Out, true);
     }
+  },
+  
+  sendGameStateUpdate: function() {
+    // Send current game state to parent window for score display
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage({
+        type: 'PERFECT_SQUARE_STATE',
+        gameState: {
+          score: gameScore,
+          level: savedData.level,
+          multiplier: 1,
+          isPlaying: true,
+          gameStartTime: gameStartTime
+        }
+      }, '*');
+    }
+  },
+  
+  calculateLevelScore: function() {
+    // Base score for completing a level
+    var baseScore = 100;
+    
+    // Bonus for level difficulty
+    var levelBonus = savedData.level * 10;
+    
+    // Perfect landing bonus
+    var perfectBonus = perfectLands * 50;
+    
+    return baseScore + levelBonus + perfectBonus;
+  },
+  
+  endGame: function() {
+    var duration = Math.floor((Date.now() - gameStartTime) / 1000);
+    
+    // Calculate final score with bonuses
+    var completionBonus = levelsCompleted * 200;
+    var accuracyBonus = Math.floor((perfectLands / Math.max(totalAttempts, 1)) * 500);
+    var finalScore = gameScore + completionBonus + accuracyBonus;
+    
+    console.log('Game Over! Final Score:', finalScore);
+    console.log('Levels Completed:', levelsCompleted);
+    console.log('Perfect Lands:', perfectLands);
+    console.log('Duration:', duration, 'seconds');
+    
+    // Send final game state
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage({
+        type: 'PERFECT_SQUARE_STATE',
+        gameState: {
+          score: finalScore,
+          level: levelsCompleted,
+          multiplier: 1,
+          isPlaying: false,
+          gameStartTime: gameStartTime
+        }
+      }, '*');
+    }
+    
+    // Submit score to API
+    this.submitScore(finalScore, levelsCompleted, duration);
+  },
+  
+  submitScore: function(score, level, duration) {
+    var gameData = {
+      score: score,
+      level: level,
+      duration: duration,
+      metadata: {
+        perfectLands: perfectLands,
+        totalAttempts: totalAttempts,
+        accuracy: Math.round((perfectLands / Math.max(totalAttempts, 1)) * 100)
+      }
+    };
+    
+    fetch('/api/games/perfect-square/scores', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(gameData)
+    })
+    .then(response => response.json())
+    .then(data => {
+      console.log('Score submitted successfully:', data);
+      
+      // Show score submission result
+      if (data.success) {
+        this.levelText.text = "Score: " + score + " - Saved!";
+      } else {
+        this.levelText.text = "Score: " + score + " - Error saving";
+      }
+      
+      // Reset game after showing result
+      setTimeout(() => {
+        savedData.level = 1;
+        localStorage.setItem(localStorageName, JSON.stringify(savedData));
+        game.state.start("PlayGame");
+      }, 3000);
+    })
+    .catch(error => {
+      console.error('Error submitting score:', error);
+      this.levelText.text = "Score: " + score + " - Error saving";
+      
+      // Reset game after showing result
+      setTimeout(() => {
+        savedData.level = 1;
+        localStorage.setItem(localStorageName, JSON.stringify(savedData));
+        game.state.start("PlayGame");
+      }, 3000);
+    });
   }
 }

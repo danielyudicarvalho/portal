@@ -49,6 +49,98 @@ It’s a social platform for hyper-casual multiplayer games, where players can c
    npm run db:migrate     # Run database migrations
    ```
 
+## 🐳 Docker Deployment
+
+### Quick Start with Docker
+
+Run the entire application stack with Docker:
+
+```bash
+# Production mode (recommended)
+npm run docker:start
+
+# Development mode (with hot reload)
+npm run docker:dev
+```
+
+### Docker Commands
+
+```bash
+# Start production environment
+npm run docker:start
+
+# Start development environment
+npm run docker:dev
+
+# Stop all services
+npm run docker:stop
+
+# Stop development services
+npm run docker:stop:dev
+
+# View logs
+npm run docker:logs
+
+# View development logs
+npm run docker:logs:dev
+
+# Clean up and restart (removes old images)
+npm run docker:clean
+```
+
+### Manual Docker Setup
+
+1. **Production deployment**:
+   ```bash
+   docker compose up --build -d
+   ```
+
+2. **Development with hot reload**:
+   ```bash
+   docker compose -f docker-compose.dev.yml up --build
+   ```
+
+3. **Database only** (if you want to run the app locally):
+   ```bash
+   docker compose -f docker-compose.db.yml up -d
+   ```
+
+### Docker Services
+
+The Docker setup includes:
+
+- **PostgreSQL** (port 5432) - Main database
+- **Redis** (port 6379) - Caching and multiplayer sessions
+- **Next.js App** (port 3000) - Main application
+- **Multiplayer Server** (port 3002) - WebSocket server for real-time games
+
+### Health Checks
+
+- Application: http://localhost:3000/api/health
+- Multiplayer Server: http://localhost:3002/health
+- Database: Automatic health checks in Docker
+
+### Environment Variables for Docker
+
+The Docker setup uses the following environment variables:
+
+```env
+# Database
+DATABASE_URL=postgresql://gameuser:gamepass123@postgres:5432/game_portal
+
+# NextAuth
+NEXTAUTH_URL=http://localhost:3000
+NEXTAUTH_SECRET=your-secret-key
+
+# OAuth (optional)
+GOOGLE_CLIENT_ID=your-google-client-id
+GOOGLE_CLIENT_SECRET=your-google-client-secret
+
+# Multiplayer
+NEXT_PUBLIC_MULTIPLAYER_URL=ws://localhost:3002
+REDIS_URL=redis://redis:6379
+```
+
 4. **Run the development server**:
    ```bash
    npm run dev

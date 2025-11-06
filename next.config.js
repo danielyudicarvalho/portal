@@ -185,7 +185,7 @@ const nextConfig = {
   swcMinify: true,
 
   // Mobile-specific build optimizations
-  // output: 'standalone', // Commented out as it may cause issues
+  output: 'standalone', // Enable for Docker deployment
   
   // Reduce JavaScript bundle size for mobile
   modularizeImports: {

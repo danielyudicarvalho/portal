@@ -1,10 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { stripe, STRIPE_CONFIG } from '@/lib/stripe'
+import { stripe } from '@/lib/stripe'
 import prisma from '@/lib/prisma'
 
+const STRIPE_CONFIG = {
+  currency: 'usd',
+  minimumAmount: 100, // $1.00 in cents
+  maximumAmount: 100000, // $1000.00 in cents
+}
+
 export async function POST(request: NextRequest) {
+  // Check if Stripe is configured
+  if (!stripe) {
+    return NextResponse.json(
+      { error: 'Payment processing not available' },
+      { status: 503 }
+    )
+  }
+
   try {
     const session = await getServerSession(authOptions)
     

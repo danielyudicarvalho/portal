@@ -6,6 +6,15 @@ var angleRange = [25, 155];
 var visibleTargets = 7;
 var bgColors = [0x62bd18, 0xffbb00, 0xff5300, 0xd21034, 0xff475c, 0x8f16b2];
 
+// Game scoring system
+var gameScore = 0;
+var gameStartTime = null;
+var targetsHit = 0;
+var perfectHits = 0;
+var totalAttempts = 0;
+var currentStreak = 0;
+var maxStreak = 0;
+
 
 window.onload = function () {
   game = new Phaser.Game(640, 960, Phaser.AUTO, "");
@@ -28,6 +37,21 @@ playGame.prototype = {
     this.savedData = localStorage.getItem("circlepath") == null ? {
       score: 0
     } : JSON.parse(localStorage.getItem("circlepath"));
+    
+    // Initialize game scoring (always reset for new game)
+    gameStartTime = Date.now();
+    gameScore = 0;
+    targetsHit = 0;
+    perfectHits = 0;
+    totalAttempts = 0;
+    currentStreak = 0;
+    maxStreak = 0;
+    
+    console.log('Circle Path: Game initialized, scoring reset');
+    
+    // Send initial game state to parent window
+    this.sendGameStateUpdate();
+    
     var style = {
       font: "bold 64px Arial",
       fill: "#ffffff"
@@ -96,7 +120,32 @@ playGame.prototype = {
   changeBall: function () {
     this.destroy = false;
     var distanceFromTarget = this.balls[this.rotatingBall].position.distance(this.targetArray[1].position);
+    totalAttempts++;
+    
+    console.log('Circle Path: Ball changed, distance:', distanceFromTarget);
+    
     if (distanceFromTarget < 20) {
+      // Successful hit
+      targetsHit++;
+      currentStreak++;
+      maxStreak = Math.max(maxStreak, currentStreak);
+      
+      // Calculate score based on accuracy
+      var hitScore = this.calculateHitScore(distanceFromTarget);
+      gameScore += hitScore;
+      
+      console.log('Circle Path: Hit! Score:', hitScore, 'Total:', gameScore, 'Targets:', targetsHit);
+      
+      // Check for perfect hit (very close to center)
+      if (distanceFromTarget < 10) {
+        perfectHits++;
+        gameScore += 50; // Perfect hit bonus
+        console.log('Circle Path: Perfect hit bonus! Total score:', gameScore);
+      }
+      
+      // Send updated game state
+      this.sendGameStateUpdate();
+      
       this.rotatingDirection = game.rnd.between(0, 1);
       var detroyTween = game.add.tween(this.targetArray[0]).to({
         alpha: 0
@@ -114,6 +163,8 @@ playGame.prototype = {
       }
       this.addTarget();
     } else {
+      // Missed target - reset streak
+      currentStreak = 0;
       this.gameOver();
     }
   },
@@ -138,9 +189,80 @@ playGame.prototype = {
     this.targetGroup.add(target);
     this.targetArray.push(target);
   },
+  sendGameStateUpdate: function() {
+    var gameStateData = {
+      score: gameScore,
+      level: targetsHit + 1,
+      multiplier: Math.min(Math.floor(currentStreak / 5) + 1, 5), // Max 5x multiplier
+      isPlaying: true,
+      gameStartTime: gameStartTime
+    };
+    
+    console.log('Circle Path: Sending game state update:', gameStateData);
+    
+    // Send current game state to parent window for score display
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage({
+        type: 'CIRCLE_PATH_STATE',
+        gameState: gameStateData
+      }, '*');
+    } else {
+      console.log('Circle Path: No parent window found, running standalone');
+    }
+  },
+  
+  calculateHitScore: function(distance) {
+    // Base score for hitting target
+    var baseScore = 100;
+    
+    // Distance bonus (closer = more points)
+    var distanceBonus = Math.max(0, Math.floor((20 - distance) * 5));
+    
+    // Streak multiplier
+    var streakMultiplier = Math.min(Math.floor(currentStreak / 5) + 1, 5);
+    
+    // Target number bonus (later targets worth more)
+    var targetBonus = Math.floor(targetsHit / 10) * 10;
+    
+    return (baseScore + distanceBonus + targetBonus) * streakMultiplier;
+  },
+  
   gameOver: function () {
+    var duration = Math.floor((Date.now() - gameStartTime) / 1000);
+    
+    // Calculate final score with bonuses
+    var streakBonus = maxStreak * 25;
+    var accuracyBonus = Math.floor((perfectHits / Math.max(totalAttempts, 1)) * 1000);
+    var survivalBonus = targetsHit * 10;
+    var finalScore = gameScore + streakBonus + accuracyBonus + survivalBonus;
+    
+    console.log('Circle Path: Game Over!');
+    console.log('Circle Path: Base Score:', gameScore);
+    console.log('Circle Path: Streak Bonus:', streakBonus, '(max streak:', maxStreak + ')');
+    console.log('Circle Path: Accuracy Bonus:', accuracyBonus, '(perfect hits:', perfectHits, '/', totalAttempts + ')');
+    console.log('Circle Path: Survival Bonus:', survivalBonus, '(targets hit:', targetsHit + ')');
+    console.log('Circle Path: Final Score:', finalScore);
+    console.log('Circle Path: Duration:', duration, 'seconds');
+    
+    // Send final game state
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage({
+        type: 'CIRCLE_PATH_STATE',
+        gameState: {
+          score: finalScore,
+          level: targetsHit,
+          multiplier: 1,
+          isPlaying: false,
+          gameStartTime: gameStartTime
+        }
+      }, '*');
+    }
+    
+    // Submit score to API
+    this.submitScore(finalScore, targetsHit, duration);
+    
     localStorage.setItem("circlepath", JSON.stringify({
-      score: Math.max(this.savedData.score, this.steps - visibleTargets)
+      score: Math.max(this.savedData.score, finalScore)
     }));
     game.input.onDown.remove(this.changeBall, this);
     this.saveRotationSpeed = 0;
@@ -151,5 +273,35 @@ playGame.prototype = {
     gameOverTween.onComplete.add(function () {
       game.state.start("PlayGame");
     }, this)
+  },
+  
+  submitScore: function(score, level, duration) {
+    var gameData = {
+      score: score,
+      level: level,
+      duration: duration,
+      metadata: {
+        targetsHit: targetsHit,
+        perfectHits: perfectHits,
+        totalAttempts: totalAttempts,
+        maxStreak: maxStreak,
+        accuracy: Math.round((targetsHit / Math.max(totalAttempts, 1)) * 100)
+      }
+    };
+    
+    fetch('/api/games/circle-path/scores', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(gameData)
+    })
+    .then(response => response.json())
+    .then(data => {
+      console.log('Score submitted successfully:', data);
+    })
+    .catch(error => {
+      console.error('Error submitting score:', error);
+    });
   }
 }
