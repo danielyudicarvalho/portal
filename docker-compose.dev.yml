@@ -45,15 +45,10 @@ services:
     container_name: game-portal-app-dev
     ports:
       - "3000:3000"
+    env_file:
+      - .env.docker
     environment:
       - NODE_ENV=development
-      - DATABASE_URL=postgresql://gameuser:gamepass123@postgres:5432/game_portal
-      - NEXTAUTH_URL=http://localhost:3000
-      - NEXTAUTH_SECRET=GcmyGXqN+yPjbPQFUUB/bOLtAx+htwJQColuPoRQpXQ=
-      - NEXT_PUBLIC_MULTIPLAYER_URL=ws://localhost:3002
-      - REDIS_URL=redis://redis:6379
-      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
-      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
     volumes:
       - .:/app
       - /app/node_modules
