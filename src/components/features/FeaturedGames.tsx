@@ -62,7 +62,7 @@ const FeaturedGames: React.FC<FeaturedGamesProps> = ({
       title: 'Memdot',
       provider: 'In-House',
       thumbnail: '/images/game-placeholder.svg',
-      category: 'Classic',
+      category: 'Championship',
       rating: 4.8,
       isHot: true,
       isFavorite: false,

@@ -30,6 +30,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({
             Welcome to GamePortal
           </h1>
           <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-gray-300 mb-6 sm:mb-8 max-w-3xl mx-auto leading-relaxed animate-slide-up px-2">
+            Choose your modality. Bet on yourself. Be the best and win.
             Experience the ultimate gaming platform with thousands of games, live betting, and exclusive promotions. 
             Join millions of players worldwide!
           </p>

@@ -3,6 +3,15 @@ var w = 500;
 var h = 400;
 var user_clicks = 0;
 
+// Game scoring system
+var gameScore = 0;
+var currentLevel = 1;
+var gameStartTime = null;
+var levelStartTime = null;
+var totalLevels = 15;
+var levelClicks = 0;
+var perfectLevelThreshold = 3; // Maximum clicks for perfect level bonus
+
 function rand(num) {
   return Math.floor(Math.random() * num)
 };
@@ -276,6 +285,13 @@ var offset = {
 Game.Play = function(game) {};
 Game.Play.prototype = {
   create: function() {
+    // Initialize game scoring
+    gameScore = 0;
+    currentLevel = 1;
+    user_clicks = 0;
+    gameStartTime = Date.now();
+    levelStartTime = Date.now();
+    levelClicks = 0;
 
     this.holes = game.add.group();
     this.holes.enableBody = true;
@@ -299,20 +315,9 @@ Game.Play.prototype = {
     this.reset_button.input.useHandCursor = true;
     this.reset_button.events.onInputDown.add(this.reset_level, this);
 
-    game.add.text(10, 10, 'Fill the Holes', {
-      font: '20px Arial',
-      fill: '#fff'
-    });
-    this.level_label = game.add.text(w / 2, 10, '1/' + map.length, {
-      font: '20px Arial',
-      fill: '#fff'
-    });
-    this.level_label.anchor.setTo(0.5, 0);
+    // Create UI elements
+    this.createUI();
 
-    restart_label = game.add.text(w - 70, 10, 'restart', {
-      font: '20px Arial',
-      fill: '#fff'
-    });
     this.explanation_label = game.add.text(w / 2, h - 35, '', {
       font: '20px Arial',
       fill: '#fff'
@@ -327,7 +332,78 @@ Game.Play.prototype = {
     this.level = 0;
     this.timer_end_level = 0;
 
+    // Send initial game state
+    this.sendGameStateUpdate();
+
     this.draw_level();
+  },
+
+  // Create UI elements for score and level display
+  createUI: function() {
+    game.add.text(10, 10, 'Fill the Holes', {
+      font: '20px Arial',
+      fill: '#fff'
+    });
+
+    // Score text
+    this.scoreText = game.add.text(10, 35, 'Score: 0', {
+      font: '16px Arial',
+      fill: '#fff',
+      fontWeight: 'bold'
+    });
+
+    // Level text
+    this.level_label = game.add.text(w / 2, 10, '1/' + map.length, {
+      font: '20px Arial',
+      fill: '#fff'
+    });
+    this.level_label.anchor.setTo(0.5, 0);
+
+    // Clicks text
+    this.clicksText = game.add.text(w - 10, 35, 'Clicks: 0', {
+      font: '16px Arial',
+      fill: '#fff',
+      fontWeight: 'bold'
+    });
+    this.clicksText.anchor.setTo(1, 0);
+
+    restart_label = game.add.text(w - 70, 10, 'restart', {
+      font: '20px Arial',
+      fill: '#fff'
+    });
+  },
+
+  // Update UI elements
+  updateUI: function() {
+    if (this.scoreText) {
+      this.scoreText.text = 'Score: ' + gameScore;
+    }
+    if (this.level_label) {
+      this.level_label.text = (this.level + 1) + '/' + map.length;
+    }
+    if (this.clicksText) {
+      this.clicksText.text = 'Clicks: ' + user_clicks;
+    }
+    
+    // Send game state to parent window for real-time display
+    this.sendGameStateUpdate();
+  },
+
+  // Send game state updates to parent window
+  sendGameStateUpdate: function() {
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage({
+        type: 'GAME_STATE_UPDATE',
+        gameState: {
+          score: gameScore,
+          level: this.level + 1,
+          totalLevels: totalLevels,
+          clicks: user_clicks,
+          isPlaying: this.level < map.length,
+          gameStartTime: gameStartTime
+        }
+      }, window.location.origin);
+    }
   },
   update: function() {
     if (this.game.physics.arcade.collide(this.boxes, this.walls))
@@ -357,6 +433,11 @@ Game.Play.prototype = {
   draw_level: function() {
     this.next_s.play('', 0, 0.1, false);
 
+    // Reset level tracking
+    levelStartTime = Date.now();
+    levelClicks = 0;
+    currentLevel = this.level + 1;
+
     var level = map[this.level];
     for (var i = 0; i < level.length; i++)
       for (var j = 0; j < level[i].length; j++)
@@ -369,6 +450,8 @@ Game.Play.prototype = {
     this.explanation_label.scale.setTo(0.1, 0.1);
 
     this.game.add.tween(this.explanation_label.scale).to({ x: 1, y: 1}, 1000, Phaser.Easing.Bounce.Out).start();
+    
+    this.updateUI();
   },
   add_tile: function(x, y, type) {
     var tile;
@@ -410,6 +493,9 @@ Game.Play.prototype = {
   },
   box_clicked: function(box, pointer) {
     user_clicks += 1;
+    levelClicks += 1;
+    this.updateUI();
+    
     if (!box.alive || box.body.velocity.x != 0 || box.body.velocity.y != 0)
       return;
     var center = {
@@ -432,18 +518,50 @@ Game.Play.prototype = {
   },
   reset_level: function() {
     user_clicks += 1;
+    levelClicks += 1;
+    this.updateUI();
     this.clear_level();
     this.draw_level();
   },
   next_level: function() {
+    // Calculate level score
+    this.calculateLevelScore();
+    
     this.clear_level();
     this.level += 1;
     if (this.level == map.length) {
       this.game.state.start('End');
       return;
     }
-    this.level_label.text = (this.level + 1) + '/' + map.length;
     this.draw_level();
+  },
+
+  // Calculate score for completed level
+  calculateLevelScore: function() {
+    var basePoints = 100; // Base points per level
+    var levelTime = (Date.now() - levelStartTime) / 1000;
+    
+    // Time bonus (up to 50 points, decreases over time)
+    var timeBonus = Math.max(0, Math.floor(50 - (levelTime * 2)));
+    
+    // Efficiency bonus (50 points minus clicks used, minimum 0)
+    var efficiencyBonus = Math.max(0, 50 - levelClicks);
+    
+    // Perfect level bonus (if completed with very few clicks)
+    var perfectBonus = levelClicks <= perfectLevelThreshold ? 100 : 0;
+    
+    var levelScore = basePoints + timeBonus + efficiencyBonus + perfectBonus;
+    gameScore += levelScore;
+    
+    console.log('Level ' + currentLevel + ' completed:');
+    console.log('- Base: ' + basePoints);
+    console.log('- Time bonus: ' + timeBonus);
+    console.log('- Efficiency bonus: ' + efficiencyBonus);
+    console.log('- Perfect bonus: ' + perfectBonus);
+    console.log('- Total level score: ' + levelScore);
+    console.log('- Game score: ' + gameScore);
+    
+    this.updateUI();
   },
   clear_level: function() {
     this.boxes.callAll('kill');
@@ -468,16 +586,42 @@ Game.Play.prototype = {
 Game.End = function(game) {};
 Game.End.prototype = {
   create: function() {
-    label1 = game.add.text(w / 2, h / 2 - 20, 'you won! :-D', {
+    // Calculate final score for the last level
+    var basePoints = 100;
+    var levelTime = (Date.now() - levelStartTime) / 1000;
+    var timeBonus = Math.max(0, Math.floor(50 - (levelTime * 2)));
+    var efficiencyBonus = Math.max(0, 50 - levelClicks);
+    var perfectBonus = levelClicks <= perfectLevelThreshold ? 100 : 0;
+    var finalLevelScore = basePoints + timeBonus + efficiencyBonus + perfectBonus;
+    gameScore += finalLevelScore;
+
+    // Send final game state update
+    this.sendGameStateUpdate();
+
+    label1 = game.add.text(w / 2, h / 2 - 40, 'Congratulations!', {
       font: '30px Arial',
       fill: '#fff'
     });
     label1.anchor.setTo(0.5, 0.5);
-    label2 = game.add.text(w / 2, h / 2 + 20, 'you clicked ' + user_clicks + ' times during the game', {
+    
+    label2 = game.add.text(w / 2, h / 2 - 10, 'Final Score: ' + gameScore, {
+      font: '24px Arial',
+      fill: '#00ff00'
+    });
+    label2.anchor.setTo(0.5, 0.5);
+    
+    label3 = game.add.text(w / 2, h / 2 + 15, 'Total Clicks: ' + user_clicks, {
       font: '20px Arial',
       fill: '#fff'
     });
-    label2.anchor.setTo(0.5, 0.5);
+    label3.anchor.setTo(0.5, 0.5);
+
+    this.statusLabel = game.add.text(w / 2, h / 2 + 40, 'Submitting score...', {
+      font: '16px Arial',
+      fill: '#ffff00'
+    });
+    this.statusLabel.anchor.setTo(0.5, 0.5);
+
     game.add.tween(label1.scale).to({
         x: 1.3,
         y: 1.3
@@ -486,9 +630,85 @@ Game.End.prototype = {
         x: 1,
         y: 1
       }, 1000, Phaser.Easing.Linear.None).loop().start();
+    
     emitter = game.add.emitter(w / 2, -200, 100);
     emitter.makeParticles(['box', 'hole', 'wall']);
     emitter.start(false, 5000, 200);
+
+    // Submit score to server
+    this.submitScore();
+  },
+
+  // Send game state updates to parent window
+  sendGameStateUpdate: function() {
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage({
+        type: 'GAME_STATE_UPDATE',
+        gameState: {
+          score: gameScore,
+          level: totalLevels,
+          totalLevels: totalLevels,
+          clicks: user_clicks,
+          isPlaying: false,
+          gameStartTime: gameStartTime,
+          completed: true
+        }
+      }, window.location.origin);
+    }
+  },
+
+  // Submit score to the server
+  submitScore: function() {
+    if (gameScore <= 0) return;
+    
+    var gameDuration = Math.floor((Date.now() - gameStartTime) / 1000);
+    
+    // Submit to API
+    fetch('/api/games/fill-the-holes/scores', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        score: gameScore,
+        level: totalLevels,
+        duration: gameDuration,
+        metadata: {
+          totalClicks: user_clicks,
+          levelsCompleted: totalLevels,
+          averageClicksPerLevel: Math.round(user_clicks / totalLevels * 10) / 10
+        }
+      })
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        console.log('Score submitted successfully:', data);
+        // Show appropriate message based on user status
+        if (this.statusLabel) {
+          if (data.anonymous) {
+            this.statusLabel.text = 'Sign in to save to leaderboard!';
+            this.statusLabel.fill = '#ff8800';
+          } else {
+            this.statusLabel.text = 'Score Saved to Leaderboard!';
+            this.statusLabel.fill = '#00ff00';
+          }
+        }
+      } else {
+        console.error('Failed to submit score:', data.error);
+        if (this.statusLabel) {
+          this.statusLabel.text = 'Failed to save score';
+          this.statusLabel.fill = '#ff0000';
+        }
+      }
+    })
+    .catch(error => {
+      console.error('Error submitting score:', error);
+      if (this.statusLabel) {
+        this.statusLabel.text = 'Error saving score';
+        this.statusLabel.fill = '#ff0000';
+      }
+    });
   }
 };
 var game = new Phaser.Game(w, h, Phaser.AUTO, 'gameContainer');

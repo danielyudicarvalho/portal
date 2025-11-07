@@ -1,8 +1,10 @@
 version: '3.8'
 
 services:
+  # PostgreSQL Database
   postgres:
     image: postgres:15-alpine
+    container_name: game-portal-postgres-dev
     ports:
       - "5432:5432"
     environment:
@@ -10,41 +12,43 @@ services:
       - POSTGRES_USER=gameuser
       - POSTGRES_PASSWORD=gamepass123
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_dev_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U gameuser -d game_portal"]
       interval: 10s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
 
+  # Redis for caching and multiplayer sessions
   redis:
     image: redis:7-alpine
+    container_name: game-portal-redis-dev
     ports:
       - "6379:6379"
     volumes:
-      - redis_data:/data
-    command: redis-server --appendonly yes
+      - redis_dev_data:/data
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 3s
       retries: 3
+    restart: unless-stopped
 
+  # Next.js Application (Development)
   app:
     build:
       context: .
       dockerfile: Dockerfile.nextjs
+      target: development
+    container_name: game-portal-app-dev
     ports:
       - "3000:3000"
     env_file:
-      - .env.local
+      - .env.docker
     environment:
       - NODE_ENV=development
-      - NEXT_PUBLIC_MULTIPLAYER_URL=ws://localhost:3002
-      - DATABASE_URL=postgresql://gameuser:gamepass123@postgres:5432/game_portal
-      - NEXTAUTH_URL=http://localhost:3000
-      - REDIS_URL=redis://redis:6379
-      # Stripe configuration from .env.local will be loaded
     volumes:
       - .:/app
       - /app/node_modules
@@ -54,15 +58,16 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      multiplayer-server:
-        condition: service_started
+    restart: unless-stopped
     command: sh -c "npx prisma migrate deploy && npm run dev"
 
+  # Multiplayer Server (Development)
   multiplayer-server:
     build:
       context: .
       dockerfile: Dockerfile.multiplayer
       target: dev
+    container_name: game-portal-multiplayer-dev
     ports:
       - "3002:3002"
     environment:
@@ -76,7 +81,14 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+    restart: unless-stopped
 
 volumes:
-  postgres_data:
-  redis_data:
+  postgres_dev_data:
+    driver: local
+  redis_dev_data:
+    driver: local
+
+networks:
+  default:
+    name: game-portal-dev-network

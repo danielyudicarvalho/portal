@@ -2,10 +2,10 @@
 
 import React from 'react';
 import { Button } from '@/components/ui';
-import { 
-  SparklesIcon, 
-  FireIcon, 
-  BoltIcon, 
+import {
+  SparklesIcon,
+  FireIcon,
+  BoltIcon,
   TrophyIcon,
   CubeIcon,
   HeartIcon,
@@ -29,19 +29,19 @@ interface GameCategoriesProps {
 const GameCategories: React.FC<GameCategoriesProps> = ({ onCategoryClick }) => {
   const categories: GameCategory[] = [
     {
-      id: 'classic',
-      name: 'Classic',
-      description: 'Timeless games that never go out of style',
-      icon: <SparklesIcon className="h-8 w-8" />,
+      id: 'championship',
+      name: 'Championship',
+      description: 'Competitive games for champions!',
+      icon: <TrophyIcon className="h-8 w-8" />,
       gameCount: 8,
       color: 'from-gaming-accent to-orange-500',
-      href: '/games/classic'
+      href: '/games/championship'
     },
     {
       id: 'team',
       name: 'Team',
-      description: 'Cooperative and competitive team-based games',
-      icon: <TrophyIcon className="h-8 w-8" />,
+      description: 'Team up and dominate the competition together!',
+      icon: <SparklesIcon className="h-8 w-8" />,
       gameCount: 1,
       color: 'from-gaming-secondary to-blue-500',
       href: '/games/team'
@@ -49,7 +49,7 @@ const GameCategories: React.FC<GameCategoriesProps> = ({ onCategoryClick }) => {
     {
       id: 'survival',
       name: 'Survival',
-      description: 'Test your endurance and survival skills',
+      description: 'Be the last one alive. Outlast everyone — only the strongest survive!',
       icon: <FireIcon className="h-8 w-8" />,
       gameCount: 3,
       color: 'from-red-500 to-pink-500',
@@ -58,7 +58,7 @@ const GameCategories: React.FC<GameCategoriesProps> = ({ onCategoryClick }) => {
     {
       id: 'tournament',
       name: 'Tournament',
-      description: 'Competitive tournaments and ranked matches',
+      description: 'Compete in ranked battles and climb the tournament ladder!',
       icon: <BoltIcon className="h-8 w-8" />,
       gameCount: 1,
       color: 'from-yellow-500 to-gaming-warning',
@@ -82,8 +82,8 @@ const GameCategories: React.FC<GameCategoriesProps> = ({ onCategoryClick }) => {
         {/* Categories Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {categories.map((category, index) => (
-            <div 
-              key={category.id} 
+            <div
+              key={category.id}
               className="group cursor-pointer transform transition-all duration-300 hover:scale-105 animate-slide-up bg-gradient-to-br from-gaming-dark to-gaming-darker border border-gaming-accent/20 shadow-lg rounded-lg hover:shadow-xl"
               style={{ animationDelay: `${index * 0.1}s` }}
               onClick={() => onCategoryClick?.(category)}
@@ -113,9 +113,9 @@ const GameCategories: React.FC<GameCategoriesProps> = ({ onCategoryClick }) => {
                 </div>
 
                 {/* Action Button */}
-                <Button 
-                  variant="outline" 
-                  size="sm" 
+                <Button
+                  variant="outline"
+                  size="sm"
                   className="w-full group-hover:bg-gaming-accent group-hover:text-white group-hover:border-gaming-accent transition-all duration-300"
                 >
                   Explore Now
@@ -127,8 +127,8 @@ const GameCategories: React.FC<GameCategoriesProps> = ({ onCategoryClick }) => {
 
         {/* View All Categories Button */}
         <div className="text-center mt-12">
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             size="lg"
             className="group"
           >

@@ -10,11 +10,18 @@ var colorsInGame = [0xff0000, 0xff8800, 0x00ff00, 0x0000ff, 0xff00ff, 0x555555];
 // how many circles in game?
 var circlesInGame = 4;
 
+// Game scoring system
+var gameScore = 0;
+var currentLevel = 1;
+var gameStartTime = null;
+var levelStartTime = null;
+var scoreMultiplier = 1;
+
 // creation of the game
 window.onload = function () {
   console.log('Memdot game initializing...');
   try {
-    game = new Phaser.Game(320, 480, Phaser.AUTO, "");
+    game = new Phaser.Game(320, 480, Phaser.AUTO, "game-container");
     game.state.add("PlayGame", playGame);
     game.state.start("PlayGame");
     console.log('Memdot game started successfully');
@@ -53,11 +60,24 @@ playGame.prototype = {
     // checking if it's game over
     this.gameOver = false;
 
+    // Initialize game scoring
+    gameScore = 0;
+    currentLevel = 1;
+    gameStartTime = Date.now();
+    levelStartTime = Date.now();
+    scoreMultiplier = 1;
+
+    // Send initial game state
+    this.sendGameStateUpdate();
+
     // set background color to white                                                                                     
     game.stage.backgroundColor = "#ffffff";
 
     // adding a group containing all circles
     this.circleGroup = game.add.group();
+
+    // Create UI elements
+    this.createUI();
 
     // placeCirlces method will handle circle placement and movement
     this.handleCircles();
@@ -79,6 +99,61 @@ playGame.prototype = {
 
     // horizontal centering timerGroup
     this.timerGroup.x = (game.width - this.timerGroup.width) / 2;
+  },
+
+  // Create UI elements for score and level display
+  createUI: function() {
+    // Score text
+    this.scoreText = game.add.text(10, 10, 'Score: 0', {
+      font: '16px Arial',
+      fill: '#333333',
+      fontWeight: 'bold'
+    });
+
+    // Level text
+    this.levelText = game.add.text(10, 30, 'Level: 1', {
+      font: '16px Arial',
+      fill: '#333333',
+      fontWeight: 'bold'
+    });
+
+    // Multiplier text
+    this.multiplierText = game.add.text(10, 50, 'x1', {
+      font: '14px Arial',
+      fill: '#666666'
+    });
+  },
+
+  // Update UI elements
+  updateUI: function() {
+    if (this.scoreText) {
+      this.scoreText.text = 'Score: ' + gameScore;
+    }
+    if (this.levelText) {
+      this.levelText.text = 'Level: ' + currentLevel;
+    }
+    if (this.multiplierText) {
+      this.multiplierText.text = 'x' + scoreMultiplier;
+    }
+    
+    // Send game state to parent window for real-time display
+    this.sendGameStateUpdate();
+  },
+
+  // Send game state updates to parent window
+  sendGameStateUpdate: function() {
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage({
+        type: 'GAME_STATE_UPDATE',
+        gameState: {
+          score: gameScore,
+          level: currentLevel,
+          multiplier: scoreMultiplier,
+          isPlaying: !this.gameOver,
+          gameStartTime: gameStartTime
+        }
+      }, window.location.origin);
+    }
   },
 
   // function to place the circles on the stage
@@ -298,6 +373,11 @@ playGame.prototype = {
       // if the circle has the same tint color of the cover...
       // (we use tintColor property we previously saved, because circle tint color now is white)
       if (b.tintColor == this.cover.tint) {
+        // Add points for correct selection
+        var basePoints = 50;
+        var timeBonus = Math.max(0, Math.floor((10 - this.timePassed) * 5));
+        gameScore += (basePoints + timeBonus) * scoreMultiplier;
+        this.updateUI();
 
         // then destroy it
         b.destroy();
@@ -313,6 +393,22 @@ playGame.prototype = {
 
         // if level is completed, advance to next level
         if (levelCompleted) {
+          // Calculate level completion bonus
+          var levelTime = (Date.now() - levelStartTime) / 1000;
+          var timeBonus = Math.max(0, Math.floor((10 - levelTime) * 10));
+          var levelBonus = currentLevel * 100;
+          
+          gameScore += (timeBonus + levelBonus) * scoreMultiplier;
+          
+          // Increase level and difficulty
+          currentLevel++;
+          if (currentLevel % 3 === 0) {
+            circlesInGame = Math.min(circlesInGame + 1, 8);
+            scoreMultiplier++;
+          }
+          
+          levelStartTime = Date.now();
+          this.updateUI();
 
           // stop the timer
           game.time.events.remove(this.countDown);
@@ -333,7 +429,13 @@ playGame.prototype = {
         game.time.events.remove(this.countDown);
 
         // and it's game over
-        this.gameOver = true
+        this.gameOver = true;
+
+        // Send final game state update
+        this.sendGameStateUpdate();
+
+        // Submit score to server
+        this.submitScore();
 
         // wait 5 seconds then restart the game
         game.time.events.add(Phaser.Timer.SECOND * 5, function () {
@@ -358,7 +460,80 @@ playGame.prototype = {
 
     // else, it's game over
     else {
-      //this.gameOver = true;
+      // Time's up - game over
+      this.gameOver = true;
+      this.sendGameStateUpdate();
+      this.submitScore();
+      
+      // wait 5 seconds then restart the game
+      game.time.events.add(Phaser.Timer.SECOND * 5, function () {
+        game.state.start("PlayGame");
+      }, this);
     }
+  },
+
+  // Submit score to the server
+  submitScore: function() {
+    if (gameScore <= 0) return;
+    
+    var gameDuration = Math.floor((Date.now() - gameStartTime) / 1000);
+    
+    // Create game over display
+    this.showGameOver();
+    
+    // Submit to API
+    fetch('/api/games/memdot/scores', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        score: gameScore,
+        level: currentLevel,
+        duration: gameDuration,
+        metadata: {
+          circlesCompleted: currentLevel - 1,
+          finalMultiplier: scoreMultiplier
+        }
+      })
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        console.log('Score submitted successfully:', data);
+        // Show appropriate message based on user status
+        if (this.gameOverText) {
+          if (data.anonymous) {
+            this.gameOverText.text += '\nSign in to save to leaderboard!';
+          } else {
+            this.gameOverText.text += '\nScore Saved to Leaderboard!';
+          }
+        }
+      } else {
+        console.error('Failed to submit score:', data.error);
+      }
+    })
+    .catch(error => {
+      console.error('Error submitting score:', error);
+    });
+  },
+
+  // Show game over screen
+  showGameOver: function() {
+    // Create semi-transparent overlay
+    var overlay = game.add.graphics(0, 0);
+    overlay.beginFill(0x000000, 0.7);
+    overlay.drawRect(0, 0, game.width, game.height);
+    overlay.endFill();
+
+    // Game over text
+    this.gameOverText = game.add.text(game.width / 2, game.height / 2 - 40, 
+      'GAME OVER\n\nFinal Score: ' + gameScore + '\nLevel Reached: ' + currentLevel + '\n\nRestarting in 5 seconds...', {
+      font: '18px Arial',
+      fill: '#ffffff',
+      align: 'center',
+      fontWeight: 'bold'
+    });
+    this.gameOverText.anchor.setTo(0.5, 0.5);
   }
 }

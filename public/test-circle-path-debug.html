@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Circle Path Debug Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #1a1a1a;
+            color: white;
+        }
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 20px;
+            height: 80vh;
+        }
+        .game-section {
+            background: #2a2a2a;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .debug-section {
+            background: #2a2a2a;
+            border-radius: 8px;
+            padding: 20px;
+            overflow-y: auto;
+        }
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+        .log-entry {
+            background: #333;
+            padding: 8px;
+            margin: 4px 0;
+            border-radius: 4px;
+            font-size: 12px;
+            border-left: 3px solid #4CAF50;
+        }
+        .error {
+            border-left-color: #f44336;
+        }
+        .info {
+            border-left-color: #2196F3;
+        }
+        .score-display {
+            background: #444;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .score-item {
+            display: flex;
+            justify-content: space-between;
+            margin: 5px 0;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 Circle Path Debug Test</h1>
+    <p>Testing Circle Path game communication and scoring</p>
+    
+    <div class="container">
+        <!-- Game Section -->
+        <div class="game-section">
+            <iframe 
+                src="/games/circle-path/index.html" 
+                title="Circle Path Game"
+                allow="fullscreen; gamepad; microphone; camera"
+                sandbox="allow-scripts allow-same-origin allow-popups allow-forms">
+            </iframe>
+        </div>
+        
+        <!-- Debug Section -->
+        <div class="debug-section">
+            <h3>🎮 Current Game State</h3>
+            <div id="scoreDisplay" class="score-display">
+                <div class="score-item">
+                    <span>Score:</span>
+                    <span id="currentScore">0</span>
+                </div>
+                <div class="score-item">
+                    <span>Level:</span>
+                    <span id="currentLevel">1</span>
+                </div>
+                <div class="score-item">
+                    <span>Multiplier:</span>
+                    <span id="currentMultiplier">1x</span>
+                </div>
+                <div class="score-item">
+                    <span>Status:</span>
+                    <span id="gameStatus">Ready</span>
+                </div>
+            </div>
+            
+            <h3>🧪 Test Actions</h3>
+            <button onclick="testAPIConnection()">Test API Connection</button>
+            <button onclick="clearLogs()">Clear Logs</button>
+            
+            <h3>📊 Message Log</h3>
+            <div id="messageLog">
+                <div class="log-entry info">Waiting for game messages...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let messageCount = 0;
+        
+        // Listen for messages from the game iframe
+        window.addEventListener('message', function(event) {
+            messageCount++;
+            
+            const logEntry = document.createElement('div');
+            logEntry.className = 'log-entry';
+            
+            if (event.data && event.data.type === 'CIRCLE_PATH_STATE') {
+                logEntry.innerHTML = `
+                    <strong>Message #${messageCount} - CIRCLE_PATH_STATE:</strong><br>
+                    Score: ${event.data.gameState?.score || 'N/A'}<br>
+                    Level: ${event.data.gameState?.level || 'N/A'}<br>
+                    Multiplier: ${event.data.gameState?.multiplier || 'N/A'}<br>
+                    Playing: ${event.data.gameState?.isPlaying || 'N/A'}<br>
+                    Time: ${new Date().toLocaleTimeString()}
+                `;
+                
+                // Update display
+                updateGameDisplay(event.data.gameState);
+            } else {
+                logEntry.className += ' info';
+                logEntry.innerHTML = `
+                    <strong>Message #${messageCount} - Other:</strong><br>
+                    Type: ${event.data?.type || 'Unknown'}<br>
+                    Data: ${JSON.stringify(event.data).substring(0, 100)}...<br>
+                    Time: ${new Date().toLocaleTimeString()}
+                `;
+            }
+            
+            const messageLog = document.getElementById('messageLog');
+            messageLog.insertBefore(logEntry, messageLog.firstChild);
+            
+            // Keep only last 20 messages
+            while (messageLog.children.length > 20) {
+                messageLog.removeChild(messageLog.lastChild);
+            }
+        });
+        
+        function updateGameDisplay(gameState) {
+            if (!gameState) return;
+            
+            document.getElementById('currentScore').textContent = gameState.score || 0;
+            document.getElementById('currentLevel').textContent = gameState.level || 1;
+            document.getElementById('currentMultiplier').textContent = (gameState.multiplier || 1) + 'x';
+            document.getElementById('gameStatus').textContent = gameState.isPlaying ? 'Playing' : 'Ready';
+        }
+        
+        async function testAPIConnection() {
+            const logEntry = document.createElement('div');
+            logEntry.className = 'log-entry info';
+            
+            try {
+                logEntry.innerHTML = 'Testing API connection...';
+                document.getElementById('messageLog').insertBefore(logEntry, document.getElementById('messageLog').firstChild);
+                
+                // Test GET request
+                const getResponse = await fetch('/api/games/circle-path/scores');
+                const getData = await getResponse.json();
+                
+                logEntry.innerHTML = `
+                    <strong>API Test Result:</strong><br>
+                    GET Status: ${getResponse.status}<br>
+                    Entries: ${getData.entries?.length || 0}<br>
+                    Response: ${JSON.stringify(getData).substring(0, 200)}...
+                `;
+                
+                // Test POST request
+                const postResponse = await fetch('/api/games/circle-path/scores', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        score: 9999,
+                        level: 20,
+                        duration: 120,
+                        metadata: {
+                            targetsHit: 20,
+                            perfectHits: 15,
+                            totalAttempts: 20,
+                            maxStreak: 15,
+                            accuracy: 100
+                        }
+                    })
+                });
+                
+                const postData = await postResponse.json();
+                
+                logEntry.innerHTML += `<br>
+                    POST Status: ${postResponse.status}<br>
+                    POST Response: ${JSON.stringify(postData)}
+                `;
+                
+            } catch (error) {
+                logEntry.className += ' error';
+                logEntry.innerHTML = `
+                    <strong>API Test Error:</strong><br>
+                    ${error.message}
+                `;
+            }
+        }
+        
+        function clearLogs() {
+            const messageLog = document.getElementById('messageLog');
+            messageLog.innerHTML = '<div class="log-entry info">Logs cleared. Waiting for new messages...</div>';
+            messageCount = 0;
+        }
+        
+        // Log when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            const logEntry = document.createElement('div');
+            logEntry.className = 'log-entry info';
+            logEntry.innerHTML = `
+                <strong>Debug Page Loaded:</strong><br>
+                Time: ${new Date().toLocaleTimeString()}<br>
+                Ready to receive messages from Circle Path game.
+            `;
+            document.getElementById('messageLog').appendChild(logEntry);
+        });
+    </script>
+</body>
+</html>
