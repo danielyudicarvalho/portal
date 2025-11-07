@@ -158,17 +158,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Game not found' }, { status: 404 });
     }
 
-    // Calculate initial prize pool (entry fee * estimated participants)
-    const estimatedParticipants = validatedData.maxParticipants || 10;
-    const initialPrizePool = validatedData.entryFee * estimatedParticipants;
-
+    // Prize pool starts at 0 and grows with each participant's entry fee
     const championship = await prisma.championship.create({
       data: {
         title: validatedData.title,
         description: validatedData.description,
         gameId: game.id,
         entryFee: validatedData.entryFee,
-        prizePool: initialPrizePool,
+        prizePool: 0, // Start at 0, will increment with each participant
         maxParticipants: validatedData.maxParticipants,
         startTime,
         endTime,

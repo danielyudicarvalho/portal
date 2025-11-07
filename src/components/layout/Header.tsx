@@ -137,6 +137,7 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle, isMobileMenuOpen })
                 <div className="hidden md:flex">
                   <CreditBalance 
                     showPurchaseButton={false}
+                    theme="dark"
                   />
                 </div>
 

@@ -47,7 +47,7 @@ async function seedChampionships() {
         description: 'Test your memory skills in this intense championship! Remember the patterns and compete for the top prize.',
         gameId: games.find(g => g.slug === 'memdot')?.id,
         entryFee: 25,
-        prizePool: 500,
+        prizePool: 0, // Will be incremented as participants join
         maxParticipants: 50,
         startTime: subHours(now, 1), // Started 1 hour ago
         endTime: addHours(now, 3), // Ends in 3 hours
@@ -60,7 +60,7 @@ async function seedChampionships() {
         description: 'Precision and timing are key in this championship. Grow your square to perfection!',
         gameId: games.find(g => g.slug === 'perfect-square')?.id,
         entryFee: 15,
-        prizePool: 300,
+        prizePool: 0, // Will be incremented as participants join
         maxParticipants: 30,
         startTime: addHours(now, 2), // Starts in 2 hours
         endTime: addHours(now, 6), // 4 hour duration
@@ -73,7 +73,7 @@ async function seedChampionships() {
         description: 'A longer championship for puzzle enthusiasts. Fill all the holes and claim victory!',
         gameId: games.find(g => g.slug === 'fill-the-holes')?.id,
         entryFee: 30,
-        prizePool: 750,
+        prizePool: 0, // Will be incremented as participants join
         maxParticipants: 25,
         startTime: addDays(now, 1), // Starts tomorrow
         endTime: addDays(addHours(now, 8), 1), // 8 hour duration
@@ -86,7 +86,7 @@ async function seedChampionships() {
         description: 'The first weekly numbers championship has concluded. Congratulations to all participants!',
         gameId: games.find(g => g.slug === '123')?.id,
         entryFee: 20,
-        prizePool: 400,
+        prizePool: 0, // Will be incremented as participants join
         maxParticipants: 20,
         startTime: subDays(now, 2), // Started 2 days ago
         endTime: subHours(now, 2), // Ended 2 hours ago
@@ -99,7 +99,7 @@ async function seedChampionships() {
         description: 'Quick 2-hour championship for Circle Path masters!',
         gameId: games.find(g => g.slug === 'circle-path')?.id,
         entryFee: 10,
-        prizePool: 150,
+        prizePool: 0, // Will be incremented as participants join
         maxParticipants: 15,
         startTime: subHours(now, 0.5), // Started 30 minutes ago
         endTime: addHours(now, 1.5), // Ends in 1.5 hours
