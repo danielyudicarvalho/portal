@@ -93,6 +93,9 @@ COPY prisma ./prisma/
 # Install dependencies
 RUN npm ci
 
+# Install additional dependencies if needed
+RUN npm list stripe @stripe/stripe-js @stripe/react-stripe-js || npm install stripe @stripe/stripe-js @stripe/react-stripe-js
+
 # Copy source code
 COPY . .
 

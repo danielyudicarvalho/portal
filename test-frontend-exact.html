@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Exact Frontend Simulation</title>
+    <script src="https://unpkg.com/colyseus.js@^0.15.0/dist/colyseus.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .room { border: 1px solid #ccc; margin: 10px 0; padding: 10px; }
+        .debug { background: #f0f0f0; padding: 10px; margin: 10px 0; }
+        .error { color: red; }
+        .success { color: green; }
+    </style>
+</head>
+<body>
+    <h1>Frontend Room Service Simulation</h1>
+    <div id="status">Starting...</div>
+    <div id="debug" class="debug"></div>
+    <div id="rooms"></div>
+    
+    <script>
+        // Simulate the exact frontend logic
+        class FrontendRoomService {
+            constructor() {
+                this.client = null;
+                this.lobbyConnection = null;
+                this.selectedGameId = 'the-battle'; // This should be set when navigating to The Battle page
+                this.rooms = [];
+            }
+            
+            async connectToLobby() {
+                console.log('🔌 Connecting to lobby...');
+                this.client = new Colyseus.Client('ws://localhost:3002');
+                this.lobbyConnection = await this.client.joinOrCreate('lobby');
+                
+                this.setupLobbyHandlers();
+                console.log('✅ Connected to lobby');
+            }
+            
+            setupLobbyHandlers() {
+                // Handle rooms updated (exact same logic as frontend)
+                this.lobbyConnection.onMessage('rooms_updated', (data) => {
+                    console.log('📡 Received rooms_updated:', data);
+                    
+                    const allRooms = data.activeRooms || [];
+                    console.log('Total rooms received:', allRooms.length);
+                    
+                    // Apply the same filtering logic as the frontend
+                    const scopedRooms = this.selectedGameId
+                        ? allRooms.filter(r => r.gameId === this.selectedGameId)
+                        : allRooms;
+                    
+                    console.log('Selected game ID:', this.selectedGameId);
+                    console.log('Scoped rooms after filtering:', scopedRooms.length);
+                    
+                    this.rooms = scopedRooms;
+                    this.updateUI();
+                });
+            }
+            
+            async getActiveRooms(gameId) {
+                console.log('🔄 Getting active rooms for game:', gameId);
+                
+                return new Promise((resolve, reject) => {
+                    const timeout = setTimeout(() => {
+                        reject(new Error('Timeout getting active rooms'));
+                    }, 10000);
+
+                    console.log('📤 Sending refresh_rooms message...');
+                    this.lobbyConnection.send('refresh_rooms');
+                    
+                    const handler = (data) => {
+                        console.log('📡 Received rooms_updated response:', data);
+                        clearTimeout(timeout);
+                        this.lobbyConnection.off('rooms_updated', handler);
+                        
+                        const rooms = data.rooms || data.activeRooms || [];
+                        console.log('📋 Total rooms received:', rooms.length);
+                        const filteredRooms = gameId ? 
+                            rooms.filter((room) => room.gameId === gameId) : 
+                            rooms;
+                        console.log('🎯 Filtered rooms for', gameId + ':', filteredRooms.length);
+                        
+                        resolve(filteredRooms);
+                    };
+                    
+                    this.lobbyConnection.onMessage('rooms_updated', handler);
+                });
+            }
+            
+            updateUI() {
+                const debugDiv = document.getElementById('debug');
+                const roomsDiv = document.getElementById('rooms');
+                
+                debugDiv.innerHTML = `
+                    <h3>Debug Info:</h3>
+                    <p><strong>Selected Game ID:</strong> ${this.selectedGameId}</p>
+                    <p><strong>Filtered Rooms Count:</strong> ${this.rooms.length}</p>
+                `;
+                
+                if (this.rooms.length > 0) {
+                    let html = '<h2>Rooms for "the-battle":</h2>';
+                    this.rooms.forEach(room => {
+                        html += `
+                            <div class="room">
+                                <strong>Room Code:</strong> ${room.roomCode}<br>
+                                <strong>Name:</strong> "${room.roomName}"<br>
+                                <strong>Game ID:</strong> ${room.gameId}<br>
+                                <strong>Players:</strong> ${room.playerCount}/${room.maxPlayers}<br>
+                                <strong>Private:</strong> ${room.isPrivate}<br>
+                                <strong>State:</strong> ${room.state}
+                            </div>
+                        `;
+                    });
+                    roomsDiv.innerHTML = html;
+                } else {
+                    roomsDiv.innerHTML = '<div class="error">❌ No rooms found for "the-battle"</div>';
+                }
+            }
+        }
+        
+        async function testFrontend() {
+            const statusDiv = document.getElementById('status');
+            
+            try {
+                statusDiv.innerHTML = 'Connecting...';
+                
+                const roomService = new FrontendRoomService();
+                await roomService.connectToLobby();
+                
+                statusDiv.innerHTML = 'Connected! Getting rooms...';
+                
+                // Simulate what happens when you navigate to The Battle rooms page
+                const rooms = await roomService.getActiveRooms('the-battle');
+                
+                statusDiv.innerHTML = `<span class="success">✅ Found ${rooms.length} rooms</span>`;
+                
+            } catch (error) {
+                statusDiv.innerHTML = `<span class="error">❌ Error: ${error.message}</span>`;
+                console.error('Error:', error);
+            }
+        }
+        
+        // Start the test
+        testFrontend();
+    </script>
+</body>
+</html>
